@@ -172,125 +172,15 @@ GREEN_EDGE_BUFFER = 0.80  # 80% of box (20% margin)
 **What it does**:
 - Exports 18 individual hole pages (holes 1-17 with opposite-side hole)
 - Exports special pages:
-  - `yardage_book_18_notes.pdf` - Hole 18 with notes section
-  - `yardage_book_9_9.pdf` - Turn page (holes 9/9)
-  - `yardage_book_back_cover.pdf` - Back cover
-  - `yardage_book_chart_18.pdf` - Scorecard page
+  - `yardage_book_18_notes.pdf` - Hole 18/notes
+  - `yardage_book_back_cover.pdf` - Back/Cover
+  - `yardage_book_chart_18.pdf` - Yardage chart/hole 18
 
 **Example output**: `examples/exported_pdfs/` (20 PDF files)
 
 **Example**: `examples/course_stage_5.svg`
 
 ---
-
-## Project Structure
-
-```
-golf-cartographer/
-├── README.md                          # This file
-├── LICENSE                            # MIT License
-├── CLAUDE.md                          # Developer guide for AI assistants
-├── PICKUP_PROMPT.md                   # Session continuity for development
-│
-├── docs/                              # Documentation
-│   └── FUTURE_ENHANCEMENTS.md        # Planned features and improvements
-│
-├── examples/                          # Example files showing each stage
-│   ├── course_stage_1.svg            # After Stage 1 (flattening)
-│   ├── course_stage_2.svg            # After Stage 2 (18 grouped holes)
-│   ├── course_stage_3_a.svg          # After Stage 3 (positioned holes)
-│   ├── course_stage_3_b.svg          # After Stage 3 (scaled greens)
-│   ├── course_stage_5.svg            # Final yardage book
-│   └── exported_pdfs/                # 20 exported PDF files
-│
-└── golf-cartographer/                 # Inkscape extension files
-    ├── flatten_svg.py                # Stage 1: Flatten SVG
-    ├── flatten_svg.inx               # Stage 1: Metadata
-    ├── group_hole.py                 # Stage 2: Group Hole
-    ├── group_hole.inx                # Stage 2: Metadata
-    ├── auto_place_holes.py           # Stage 3: Auto-Place & Scale
-    ├── auto_place_holes.inx          # Stage 3: Metadata
-    ├── export_pdfs.py                # Stage 4: Export PDFs
-    ├── export_pdfs.inx               # Stage 4: Metadata
-    │
-    ├── transform_utils.py            # Shared transform utilities
-    ├── geometry_utils.py             # Shared geometry utilities
-    └── color_utils.py                # Shared color detection utilities
-```
-
----
-
-## Technical Architecture
-
-### Utility Modules
-
-The extension suite uses three shared utility modules to eliminate code duplication:
-
-#### `transform_utils.py` (361 lines)
-- `SimpleBoundingBox` - Type-safe bounding box class
-- `get_cumulative_scale()` - Extract scale from transform chains
-- `set_stroke_recursive()` - Apply stroke widths to element trees
-- `apply_stroke_compensation()` - Adjust stroke widths after scaling
-- `measure_elements_via_temp_group()` - Accurate bounding box measurement
-
-#### `geometry_utils.py` (247 lines)
-- `calculate_centroid()` - Shoelace formula with 3-level fallback
-- `calculate_rotation_angle()` - Orient elements toward target direction
-- `get_canvas_bounds()` - Extract document dimensions
-
-#### `color_utils.py` (304 lines)
-- `categorize_element_by_color()` - Fuzzy color matching for OSM elements
-- Supports greens, fairways, bunkers, water, trees, paths, and mapping lines
-
-### Design Principles
-
-- **Modular Pipeline**: Each stage produces standalone output
-- **No Side Effects**: Temporary groups guarantee document restoration
-- **Type Safety**: Comprehensive type hints throughout
-- **Error Handling**: Specific exceptions with detailed logging
-- **Transform Preservation**: Careful handling of SVG transform matrices
-
----
-
-## Code Statistics
-
-- **Total Python Code**: ~2,959 lines
-- **Main Tools**: ~2,047 lines
-- **Shared Utilities**: ~912 lines
-- **Code Deduplication**: Eliminated ~475 lines of duplicate code
-
-### File Sizes
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `auto_place_holes.py` | 624 | Stage 3: Combined placement & scaling |
-| `group_hole.py` | 527 | Stage 2: Hole grouping |
-| `export_pdfs.py` | 474 | Stage 4: PDF export |
-| `flatten_svg.py` | 422 | Stage 1: SVG flattening |
-| `transform_utils.py` | 361 | Transform utilities |
-| `color_utils.py` | 304 | Color detection utilities |
-| `geometry_utils.py` | 247 | Geometry utilities |
-
----
-
-## Documentation
-
-- **[CLAUDE.md](CLAUDE.md)** - Developer guide for AI assistants (architecture, workflow, requirements)
-- **[FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md)** - Planned features and improvement ideas
-- **[PICKUP_PROMPT.md](PICKUP_PROMPT.md)** - Development session continuity guide
-
----
-
-## Examples
-
-The `examples/` directory contains a complete workflow demonstration:
-
-1. **`course_stage_1.svg`** - After flattening (5.3 MB)
-2. **`course_stage_2.svg`** - After grouping 18 holes (4.2 MB)
-3. **`course_stage_3_a.svg`** - Holes positioned in top area (23.5 MB)
-4. **`course_stage_3_b.svg`** - Greens scaled in bottom area (6.5 MB)
-5. **`course_stage_5.svg`** - Complete yardage book ready for export (21.6 MB)
-6. **`exported_pdfs/`** - 20 PDF files (1.5 MB total)
 
 ### PDF Export Combinations
 
@@ -385,38 +275,6 @@ OSM exports may use varying color palettes. If color detection fails, adjust fuz
 - Understanding of SVG transforms and coordinate systems
 - Familiarity with Inkscape extension API (`inkex` library)
 
-### Testing Workflow
-
-Since Inkscape extensions don't support automated testing:
-
-1. Make code changes
-2. Copy updated files to extensions directory
-3. Restart Inkscape
-4. Test on example SVG files
-5. Verify output at each pipeline stage
-
-### Code Quality Standards
-
-- ✅ Type hints throughout (using `from __future__ import annotations`)
-- ✅ Specific exception types (not bare `except:`)
-- ✅ Logging with `%s` style (not f-strings)
-- ✅ Comprehensive docstrings for all functions/classes
-- ✅ Try/finally guarantees for temporary modifications
-
-### Import Pattern
-
-**CRITICAL**: Inkscape runs extensions directly, not as packages. Always use absolute imports:
-
-```python
-# ✅ Correct
-from transform_utils import SimpleBoundingBox
-from geometry_utils import calculate_centroid
-
-# ❌ Incorrect (will fail)
-from .transform_utils import SimpleBoundingBox
-from .geometry_utils import calculate_centroid
-```
-
 ---
 
 ## Contributing
@@ -424,7 +282,6 @@ from .geometry_utils import calculate_centroid
 Contributions are welcome! Here's how to get started:
 
 1. **Read the documentation**:
-   - [CLAUDE.md](CLAUDE.md) for architecture and development setup
    - [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for planned features
 
 2. **Check existing issues** before starting work
@@ -438,18 +295,10 @@ Contributions are welcome! Here's how to get started:
 4. **Submit pull requests** with:
    - Clear description of changes
    - Example SVG demonstrating the feature/fix
-   - Verification that all 4 stages still work
 
 ### Ideas for Contributions
 
-See [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for a full list of planned features, including:
-
-- Batch processing for multiple courses
-- Configurable parameters via UI dialogs
-- Enhanced color detection with ML
-- Distance measurement tools
-- Multiple export format support
-- Template management system
+See [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for a full list of ideas!
 
 ---
 
@@ -458,14 +307,6 @@ See [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for a full list of pla
 MIT License - see [LICENSE](LICENSE) for details
 
 Copyright (c) 2025 BitNinja01
-
----
-
-## Acknowledgments
-
-- **OpenStreetMap** for providing golf course data
-- **Inkscape** for the excellent extension API
-- **Golf community** for feedback and testing
 
 ---
 
@@ -480,7 +321,6 @@ For issues, questions, or feature requests:
    - Python version
    - Steps to reproduce
    - Example SVG file (if applicable)
-
 ---
 
 **Built with ❤️ for golfers who love automation**
