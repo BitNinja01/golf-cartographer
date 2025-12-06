@@ -454,8 +454,6 @@ Want to work on any of these enhancements?
 4. **Follow patterns** - Match existing code quality standards
 5. **Test thoroughly** - Manual testing on real golf courses
 
-See [CLAUDE.md](../CLAUDE.md) for development setup and architecture details.
-
 ---
 
 ## Priority Legend
