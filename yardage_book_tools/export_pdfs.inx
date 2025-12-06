@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>5. Export PDFs</name>
+    <id>org.inkscape.golf.export_pdfs</id>
+    <param name="output_dir" type="path" mode="folder" gui-text="Output Directory:">~/Desktop</param>
+    <param name="filename_prefix" type="string" gui-text="Filename Prefix:">yardage_book_</param>
+    <effect>
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Yardage Book"/>
+        </effects-menu>
+    </effect>
+    <script>
+        <command location="inx" interpreter="python">export_pdfs.py</command>
+    </script>
+</inkscape-extension>

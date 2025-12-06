@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <!-- Stage 1: Flatten SVG Tool -->
+    <!-- Flattens nested SVG hierarchy and organizes golf course elements -->
+
+    <name>1. Flatten SVG</name>
+    <id>org.inkscape.golf.flatten_svg</id>
+
+    <!-- UI Configuration -->
+    <effect>
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Yardage Book"/>
+        </effects-menu>
+    </effect>
+
+    <!-- Script Reference -->
+    <!-- location="inx" means script is in the same directory as this .inx file -->
+    <!-- interpreter="python" specifies Python 3 execution -->
+    <script>
+        <command location="inx" interpreter="python">flatten_svg.py</command>
+    </script>
+</inkscape-extension>

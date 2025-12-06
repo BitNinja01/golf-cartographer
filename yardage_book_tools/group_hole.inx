@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <!-- Stage 2: Group Hole Tool -->
+    <!-- Organizes selected elements into hierarchical hole groups -->
+
+    <name>2. Group Hole</name>
+    <id>org.inkscape.golf.group_hole</id>
+
+    <!-- UI Parameters -->
+    <!-- hole_number: Which hole to create (1-18) -->
+    <param name="hole_number" type="int" min="1" max="18" gui-text="Hole Number:">1</param>
+
+    <!-- yardage_line_group: Optional ID of yardage line template to clone -->
+    <!-- If not specified, tool will search for group with 'yardage' in label -->
+    <param name="yardage_line_group" type="string" gui-text="Yardage Line Group ID (optional):"></param>
+
+    <!-- Effect Configuration -->
+    <!-- needs-live-preview="false" means this tool doesn't update as you adjust parameters -->
+    <effect needs-live-preview="false">
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Yardage Book"/>
+        </effects-menu>
+    </effect>
+
+    <!-- Script Reference -->
+    <!-- location="inx" means script is in the same directory as this .inx file -->
+    <!-- interpreter="python" specifies Python 3 execution -->
+    <script>
+        <command location="inx" interpreter="python">group_hole.py</command>
+    </script>
+</inkscape-extension>

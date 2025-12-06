@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>3. Auto-Place Holes and Scale Greens</name>
+    <id>org.inkscape.golf.auto_place_holes</id>
+    <effect>
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Yardage Book"/>
+        </effects-menu>
+    </effect>
+    <script>
+        <command location="inx" interpreter="python">auto_place_holes.py</command>
+    </script>
+</inkscape-extension>
