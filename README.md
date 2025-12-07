@@ -298,7 +298,27 @@ Contributions are welcome! Here's how to get started:
 
 ### Ideas for Contributions
 
-See [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for a full list of ideas!
+See [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for the complete list of 22+ enhancement ideas!
+
+**High Priority (Workflow Improvements)**:
+- Batch Hole Grouping - Run Stage 2 once instead of 18 times
+- Auto-Detect Holes from Greens - Eliminate manual selection
+- Undo Support - Safer experimentation and error recovery
+
+**Medium Priority (Customization)**:
+- Configuration File - JSON-based positioning without code edits
+- Interactive Parameter Dialogs - UI for adjusting all parameters
+- Template Library - Support multiple page sizes and formats
+
+**Golf-Specific Features**:
+- Yardage Line Generation - Auto-generate distance markers
+- Hazard Distance Calculator - Click-to-measure tool
+- Elevation Profile Support - Import and visualize GPX elevation data
+
+**Performance & Quality**:
+- Parallel PDF Export - 50-75% faster Stage 4
+- Unit Tests for Utilities - Automated testing
+- Enhanced Logging - Better debugging and diagnostics
 
 ---
 

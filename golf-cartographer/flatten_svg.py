@@ -41,25 +41,6 @@ class FlattenSVG(inkex.EffectExtension):
     def effect(self) -> None:
         """
         Main execution method for the extension.
-
-        Operations:
-        1. Collect all non-group elements from nested hierarchies
-        2. Remove elements completely off-canvas
-        3. Apply accumulated transforms when moving elements
-        4. Create root-level groups for greens, fairways, bunkers
-        5. Create 'other' group with 'trees', 'water', 'paths', and 'mapping_lines' subgroups
-        6. Organize elements based on color/type:
-           - Greens: fill color #87debd
-           - Fairways: fill color #ccebb0
-           - Bunkers: fill color #f5e8c5
-           - Mapping lines: stroke color #666666, fill:none
-           - Paths: stroke color #fa7f70
-           - Water: fill color #a8d1de
-           - Trees: fill color #8fbf7a
-        7. Apply 1px black stroke to all elements except paths
-        8. Delete uncategorized elements
-        9. Apply clipping path for partially off-canvas elements
-        10. Remove empty groups
         """
         root = self.document.getroot()
 
@@ -189,33 +170,6 @@ class FlattenSVG(inkex.EffectExtension):
     ) -> None:
         """
         Recursively collect elements from nested groups.
-
-        This method performs a depth-first traversal of the SVG group hierarchy,
-        collecting all non-group elements while tracking the accumulated transforms
-        from parent groups. This is critical for preserving element positioning when
-        moving elements from nested groups to the root level.
-
-        Algorithm:
-        1. Iterate through all children of the current parent
-        2. For group children: compose transforms and recurse into child group
-        3. For path/shape children: collect with accumulated transform
-        4. Mark empty groups for later removal
-
-        Transform Composition:
-        When a transform-carrying group is encountered, its transform is composed
-        with the accumulated transform using matrix multiplication (@ operator).
-        This ensures that when elements are moved to root level, their visual
-        positioning is preserved despite the hierarchy change.
-
-        Args:
-            parent: Parent element to search within
-            elements_list: List to append (element, accumulated_transform) tuples to
-            groups_list: List to append empty groups to for later removal
-            accumulated_transform: Transform accumulated from parent hierarchy
-                                   (None for root, updated as we traverse nested groups)
-
-        Returns:
-            None (modifies elements_list and groups_list in place)
         """
         # Process children (iterate over a copy to avoid modification during iteration)
         for child in list(parent):
@@ -241,10 +195,6 @@ class FlattenSVG(inkex.EffectExtension):
         """
         Apply 1px black stroke to element for visual clarity.
 
-        A uniform 1px black stroke is applied to all golf course elements (greens,
-        fairways, bunkers, etc.) to improve visual distinction and printability.
-        Path elements are excluded as they have their own distinctive styling.
-
         Args:
             element: SVG element to apply stroke to
         """
@@ -258,14 +208,6 @@ class FlattenSVG(inkex.EffectExtension):
     def _get_canvas_bounds(self) -> CanvasBounds:
         """
         Get canvas boundaries from document viewBox or width/height attributes.
-
-        Canvas bounds are determined in the following order of preference:
-        1. viewBox attribute (most reliable for coordinate system)
-        2. width/height attributes (fallback if viewBox not present)
-        3. Default 1000x1000 (last resort)
-
-        The viewBox approach is preferred because it directly defines the coordinate
-        system for the entire document, whereas width/height may be in different units.
 
         Returns:
             tuple: (x_min, y_min, x_max, y_max) canvas bounds in document units
@@ -299,34 +241,6 @@ class FlattenSVG(inkex.EffectExtension):
     ) -> List[ElementWithTransform]:
         """
         Filter out elements completely off-canvas from the collection.
-
-        Optimization Strategy:
-        Elements that are completely outside the canvas bounds are removed during this
-        early filtering stage, BEFORE categorization. This avoids unnecessary color
-        detection processing on elements that won't appear in the final output anyway.
-
-        Boundary Check Logic:
-        An element is considered "off-canvas" if its bounding box does not intersect
-        with the canvas bounds. The check uses:
-        - bbox.right < x_min: Element is completely left of canvas
-        - bbox.left > x_max: Element is completely right of canvas
-        - bbox.bottom < y_min: Element is completely above canvas
-        - bbox.top > y_max: Element is completely below canvas
-
-        Partial Canvas Elements:
-        Elements that are partially on canvas (intersection exists) are kept in the
-        collection and will be clipped by the clipping path applied later.
-
-        Args:
-            elements_list: List of (element, accumulated_transform) tuples
-            canvas_bounds: tuple (x_min, y_min, x_max, y_max)
-
-        Returns:
-            Filtered list of (element, accumulated_transform) tuples
-
-        Note:
-            Removes off-canvas elements from their parent groups immediately
-            to save memory and avoid clutter in the document hierarchy.
         """
         x_min, y_min, x_max, y_max = canvas_bounds
         filtered_elements = []
@@ -364,23 +278,6 @@ class FlattenSVG(inkex.EffectExtension):
     def _apply_canvas_clipping(self, root: inkex.SvgDocumentElement, canvas_bounds: CanvasBounds) -> None:
         """
         Create and apply clipping path to keep elements within canvas bounds.
-
-        Two-Stage Clipping Strategy:
-        1. Early Stage (_filter_offcanvas_elements): Remove completely off-canvas elements
-        2. Late Stage (this method): Apply clipping path to handle partially off-canvas elements
-
-        This approach balances optimization with visual accuracy:
-        - Removes wasteful off-canvas processing early
-        - Preserves partially visible elements with clipping masks
-
-        Clipping Path Implementation:
-        Creates an SVG <clipPath> element containing a rectangle matching the canvas bounds.
-        This clip path is then applied to all root-level groups, ensuring that any elements
-        extending beyond canvas bounds are visually clipped to the canvas rectangle.
-
-        SVG Namespace Handling:
-        The defs element is accessed using the SVG namespace URI to ensure compatibility
-        with proper SVG parsing.
 
         Args:
             root: SVG root element

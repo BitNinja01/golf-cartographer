@@ -7,7 +7,7 @@
     <effect>
         <object-type>all</object-type>
         <effects-menu>
-            <submenu name="Golf Yardage Book"/>
+            <submenu name="Golf Cartographer"/>
         </effects-menu>
     </effect>
     <script>
