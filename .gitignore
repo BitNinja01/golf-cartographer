@@ -1,6 +1,7 @@
 # Project files
 .claude/
 .obsidian/
+.idea/
 examples/
 prompts/
 CLAUDE.md

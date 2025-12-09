@@ -1,30 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-    <!-- Stage 3.5: Add Hole Label Tool -->
-    <!-- Adds hole number circle and par text to positioned holes -->
+    <!-- Stage 4: Add Hole Label Tool -->
+    <!-- Adds hole number circle, par text, and tee box yardages to positioned holes -->
 
     <name>4. Add Hole Label</name>
     <id>org.inkscape.golf.add_hole_label</id>
 
     <!-- UI Parameters -->
-    <!-- hole_number: Which hole to label (1-18) -->
-    <param name="hole_number" type="int" min="1" max="18" gui-text="Hole Number:">1</param>
 
-    <!-- par: Par value for this hole (typically 3-5, but allowing 6 for unusual holes) -->
-    <param name="par" type="int" min="3" max="6" gui-text="Par:">4</param>
+    <!-- Font Options -->
+    <param name="font_header" type="description">Font Options:</param>
 
     <!-- font_size: Optional font size customization for hole number text -->
-    <param name="font_size" type="int" min="4" max="72" gui-text="Font Size (pt):">6</param>
+    <param name="font_size" type="int" min="4" max="72" gui-text="  Font Size (pt):                                         ">6</param>
 
     <!-- font_weight: Font weight for hole number text -->
-    <param name="font_weight" type="optiongroup" appearance="combo" gui-text="Font Weight:">
+    <param name="font_weight" type="optiongroup" appearance="combo" gui-text="  Font Weight:">
         <option value="bold">Bold</option>
         <option value="normal">Normal</option>
     </param>
 
     <!-- font_family: Font family for both hole number and par text -->
     <!-- Note: Inkscape uses system fonts. Available fonts depend on OS. -->
-    <param name="font_family" type="optiongroup" appearance="combo" gui-text="Font Family:">
+    <param name="font_family" type="optiongroup" appearance="combo" gui-text="  Font Family: ">
         <!-- Most reliable cross-platform fonts (Windows + macOS + Linux fallbacks) -->
         <option value="Arial, Liberation Sans, sans-serif">Arial</option>
         <option value="Helvetica, Arial, Liberation Sans, sans-serif">Helvetica</option>
@@ -49,6 +47,44 @@
         <option value="serif">Serif (System Default)</option>
         <option value="monospace">Monospace (System Default)</option>
     </param>
+
+    <param name="spacer1" type="description">────────────────────────────────</param>
+
+    <!-- Hole Information -->
+    <param name="hole_header" type="description">Hole Information:</param>
+
+    <!-- hole_number: Which hole to label (1-18) -->
+    <param name="hole_number" type="int" min="1" max="18" gui-text="  Hole Number:                                        ">1</param>
+
+    <!-- par: Par value for this hole (typically 3-5, but allowing 6 for unusual holes) -->
+    <param name="par" type="int" min="3" max="6" gui-text="  Par:                                                       ">4</param>
+
+    <param name="spacer2" type="description">────────────────────────────────</param>
+    <param name="tee_header" type="description">Tee Box Yardages (leave yardage at 0 to skip):</param>
+
+    <!-- Tee Box 1 -->
+    <param name="tee1_name" type="string" gui-text="  Tee 1:">Red</param>
+    <param name="tee1_yardage" type="int" min="0" max="999" gui-text="">0</param>
+
+    <!-- Tee Box 2 -->
+    <param name="tee2_name" type="string" gui-text="  Tee 2:">White</param>
+    <param name="tee2_yardage" type="int" min="0" max="999" gui-text="">0</param>
+
+    <!-- Tee Box 3 -->
+    <param name="tee3_name" type="string" gui-text="  Tee 3:">Blue</param>
+    <param name="tee3_yardage" type="int" min="0" max="999" gui-text="">0</param>
+
+    <!-- Tee Box 4 -->
+    <param name="tee4_name" type="string" gui-text="  Tee 4:">Gold</param>
+    <param name="tee4_yardage" type="int" min="0" max="999" gui-text="">0</param>
+
+    <!-- Tee Box 5 -->
+    <param name="tee5_name" type="string" gui-text="  Tee 5:">Black</param>
+    <param name="tee5_yardage" type="int" min="0" max="999" gui-text="">0</param>
+
+    <!-- Tee Box 6 -->
+    <param name="tee6_name" type="string" gui-text="  Tee 6:">Green</param>
+    <param name="tee6_yardage" type="int" min="0" max="999" gui-text="">0</param>
 
     <!-- Effect Configuration -->
     <!-- needs-live-preview="false" means this tool doesn't update as you adjust parameters -->

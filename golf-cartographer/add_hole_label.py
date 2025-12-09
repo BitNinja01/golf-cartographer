@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-Add Hole Label Tool - Stage 3.5 of Golf Yardage Book Extension Suite
+Add Hole Label Tool - Stage 4 of Golf Cartographer Extension Suite
 
-This extension adds hole number circles and par text to positioned holes.
-Creates visual labels in the top-right corner of each yardage book page.
+This extension adds hole number circles, par text, and tee box yardages to positioned holes.
+Creates visual labels with customizable fonts and supports up to 6 tee boxes per course.
 
-Stage 3.5 - Hole Labeling:
+Stage 4 - Hole Labeling:
 - Creates circle at fixed page coordinates (top-right area)
 - Adds hole number text centered in circle
 - Adds par text below circle
-- Groups all elements for easy management
+- Adds tee box yardages in bottom-right corner (optional, up to 6 tees)
+- Groups all elements with inverse transforms for consistent positioning
 
 Pipeline Context:
 - Input: SVG with positioned holes (output from Tool #3 / Stage 3)
-- Output: Holes with visual labels (hole number + par)
-- Next Stage: Tool #4 will export PDFs
+- Output: Holes with visual labels (hole number + par + tee yardages)
+- Next Stage: Tool #5 will export PDFs
 
-Author: Golf Yardage Book Extension Suite
+Author: Golf Cartographer Extension Suite
 License: MIT
 """
 from __future__ import annotations
@@ -34,17 +35,20 @@ logger = logging.getLogger(__name__)
 
 class AddHoleLabel(inkex.EffectExtension):
     """
-    Adds hole number and par labels to yardage book pages.
+    Adds hole number, par labels, and tee box yardages to yardage book pages.
 
     This tool is designed to be run 18 times (once per hole), similar to the
-    Group Hole tool. Each execution creates a label group with:
-    - Circle element at fixed page coordinates
-    - Hole number text centered in the circle
-    - Par text positioned below the circle
+    Group Hole tool. Each execution creates:
+    - Label group (nested in hole group with inverse transform):
+      - Circle element at fixed page coordinates (top-right)
+      - Hole number text centered in the circle
+      - Par text positioned below the circle
+    - Tee yardages group (added to document root):
+      - Tee box yardages in bottom-right corner (optional, up to 6 tees)
 
-    The label is positioned at a fixed location on the page (top-right area),
-    not relative to the hole group transforms, since each hole will be exported
-    to its own PDF page in Stage 4.
+    The labels use inverse transforms to maintain fixed positions despite being
+    nested in transformed hole groups. Tee yardages are added directly to root
+    for simpler positioning.
     """
 
     # Fixed position for hole label circle (top-right area of page)
@@ -62,12 +66,45 @@ class AddHoleLabel(inkex.EffectExtension):
     PAR_TEXT_OFFSET: float = 0.1  # inches below circle
     PAR_TEXT_FONT_SIZE: int = 4  # Fixed font size for par text in points
 
+    # Tee box yardage positioning (bottom right corner of top area)
+    # Three-element layout: name (right-aligned) : yardage (left-aligned)
+    TEE_YARDAGE_COLON_X: float = 3.5  # inches - alignment pivot point (colon position)
+    TEE_YARDAGE_Y: float = 3.2  # inches - bottom area
+    TEE_YARDAGE_FONT_SIZE: int = 5  # points
+    TEE_YARDAGE_COLON_SPACING: float = 0.05  # inches - space after colon before yardage
+    TEE_YARDAGE_LINE_SPACING: float = 1.6  # Multiplier for line height (reduced from 2.0)
+
     def add_arguments(self, pars: argparse.ArgumentParser) -> None:
         """Add command-line arguments."""
         pars.add_argument("--hole_number", type=int, default=1,
                          help="Hole number (1-18)")
         pars.add_argument("--par", type=int, default=4,
                          help="Par value (3-6)")
+        # Tee box yardages (6 tee boxes supported)
+        pars.add_argument("--tee1_name", type=str, default="Red",
+                         help="Tee box 1 name")
+        pars.add_argument("--tee1_yardage", type=int, default=0,
+                         help="Tee box 1 yardage")
+        pars.add_argument("--tee2_name", type=str, default="White",
+                         help="Tee box 2 name")
+        pars.add_argument("--tee2_yardage", type=int, default=0,
+                         help="Tee box 2 yardage")
+        pars.add_argument("--tee3_name", type=str, default="Blue",
+                         help="Tee box 3 name")
+        pars.add_argument("--tee3_yardage", type=int, default=0,
+                         help="Tee box 3 yardage")
+        pars.add_argument("--tee4_name", type=str, default="Gold",
+                         help="Tee box 4 name")
+        pars.add_argument("--tee4_yardage", type=int, default=0,
+                         help="Tee box 4 yardage")
+        pars.add_argument("--tee5_name", type=str, default="Black",
+                         help="Tee box 5 name")
+        pars.add_argument("--tee5_yardage", type=int, default=0,
+                         help="Tee box 5 yardage")
+        pars.add_argument("--tee6_name", type=str, default="Green",
+                         help="Tee box 6 name")
+        pars.add_argument("--tee6_yardage", type=int, default=0,
+                         help="Tee box 6 yardage")
         pars.add_argument("--font_size", type=int, default=6,
                          help="Font size in points")
         pars.add_argument("--font_weight", type=str, default="bold",
@@ -80,11 +117,12 @@ class AddHoleLabel(inkex.EffectExtension):
         Main execution method for Add Hole Label Tool.
 
         Execution Flow:
-        1. Validate parameters (hole number, par, font size, color)
+        1. Validate parameters (hole number, par, font size)
         2. Validate that hole group exists (from Stage 3)
         3. Check for duplicate labels (remove if exists)
         4. Create label group with circle and text elements
-        5. Add label group to document root
+        5. Add label group to hole group with inverse transform
+        6. Create and add tee yardages to document root (if specified)
 
         Validation ensures Stage 3 (Auto-Place Holes) has been run before
         attempting to add labels.
@@ -150,6 +188,22 @@ class AddHoleLabel(inkex.EffectExtension):
         hole_group.append(label_group)
         logger.info("Successfully added label for hole %d (par %d) to hole group", hole_num, par)
 
+        # Create and add tee yardages to root (separate from hole group)
+        tee_yardages = self._create_tee_yardages(hole_num)
+        if tee_yardages is not None:
+            # Remove existing tee yardages if present
+            tee_id = f'tee_yardages_{hole_num:02d}'
+            existing_tee = root.getElementById(tee_id)
+            if existing_tee is not None:
+                logger.info("Removing existing tee yardages for hole %d", hole_num)
+                tee_parent = existing_tee.getparent()
+                if tee_parent is not None:
+                    tee_parent.remove(existing_tee)
+
+            # Add tee yardages to root (no inverse transform needed)
+            root.append(tee_yardages)
+            logger.info("Successfully added tee yardages for hole %d to root", hole_num)
+
     def _find_hole_group(self, root: inkex.SvgDocumentElement, hole_id: str) -> Optional[Group]:
         """
         Find hole group by ID or label.
@@ -184,9 +238,11 @@ class AddHoleLabel(inkex.EffectExtension):
         Create hole label group with circle and text elements.
 
         Creates a grouped structure containing:
-        - Circle element at fixed page position
+        - Circle element at fixed page position (top-right)
         - Hole number text centered in circle
         - Par text positioned below circle
+
+        Note: Tee box yardages are created separately and added to document root.
 
         All elements use the same coordinate system (document root), so they
         appear at consistent positions across all pages when exported to PDF.
@@ -332,6 +388,139 @@ class AddHoleLabel(inkex.EffectExtension):
         text.append(tspan)
 
         return text
+
+    def _create_tee_text_element(
+        self,
+        text_content: str,
+        x_uu: float,
+        y_uu: float,
+        text_anchor: str
+    ) -> TextElement:
+        """
+        Create a styled text element for tee yardage display.
+
+        Args:
+            text_content: The text to display
+            x_uu: X position in user units
+            y_uu: Y position in user units
+            text_anchor: SVG text-anchor value ('start', 'middle', or 'end')
+
+        Returns:
+            Configured TextElement with standard tee yardage styling
+        """
+        text = TextElement()
+        text.set('x', str(x_uu))
+        text.set('y', str(y_uu))
+        text.style = Style({
+            'font-size': f'{self.TEE_YARDAGE_FONT_SIZE}pt',
+            'font-family': self.options.font_family,
+            'font-weight': 'normal',
+            'fill': '#000000',
+            'stroke': 'none',
+            'text-anchor': text_anchor,
+            'dominant-baseline': 'hanging'
+        })
+
+        tspan = Tspan()
+        tspan.text = text_content
+        text.append(tspan)
+
+        return text
+
+    def _create_tee_yardages(self, hole_num: int) -> Optional[Group]:
+        """
+        Create tee box yardage display with three-element formatting.
+
+        Each line displays: "TeeNam : 325" using three separate text elements:
+        1. Tee name (right-aligned before colon)
+        2. Colon (centered at fixed alignment point)
+        3. Yardage (left-aligned after colon with spacing)
+
+        This approach ensures:
+        - All colons vertically aligned at same X position
+        - Tee names of varying length align properly
+        - Yardages have consistent left margin
+
+        Args:
+            hole_num: Hole number (1-18) for unique group ID
+
+        Returns:
+            Group containing tee yardage text elements, or None if no tees specified
+        """
+        # Collect tee boxes with non-zero yardages
+        tees: list[tuple[str, int]] = []
+        for i in range(1, 7):  # 6 tee boxes
+            name = getattr(self.options, f'tee{i}_name', '')
+            yardage = getattr(self.options, f'tee{i}_yardage', 0)
+
+            if yardage > 0 and name.strip():  # Only include if yardage > 0 and name exists
+                tees.append((name.strip(), yardage))
+
+        # Return None if no tees specified
+        if not tees:
+            logger.info("No tee box yardages specified (all zeros)")
+            return None
+
+        # Calculate line height based on font size (points to inches: 1pt = 1/72 inch)
+        # Line height = font_size * spacing_multiplier (e.g., 5pt * 1.6 = 8pt = 0.111")
+        font_size_inches = self.TEE_YARDAGE_FONT_SIZE / 72.0
+        line_height_inches = font_size_inches * self.TEE_YARDAGE_LINE_SPACING
+
+        # Convert positions to user units
+        try:
+            # Colon position (alignment pivot)
+            colon_x_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_COLON_X}in")
+            base_y_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_Y}in")
+            line_height_uu = self.svg.unittouu(f"{line_height_inches}in")
+
+            # Spacing for yardage offset
+            colon_spacing_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_COLON_SPACING}in")
+            yardage_x_uu = colon_x_uu + colon_spacing_uu
+
+        except (ValueError, AttributeError) as e:
+            logger.error("Failed to convert tee yardage units: %s", e)
+            return None
+
+        logger.info("Tee yardage layout: colon_x=%.2f\", line_height=%.3f\" (font: %dpt, spacing: %.1fx)",
+                   self.TEE_YARDAGE_COLON_X, line_height_inches,
+                   self.TEE_YARDAGE_FONT_SIZE, self.TEE_YARDAGE_LINE_SPACING)
+
+        # Create group for tee yardages
+        tee_group = Group()
+        tee_group.set('id', f'tee_yardages_{hole_num:02d}')
+        tee_group.label = f'tee_yardages_{hole_num:02d}'
+
+        # Create three elements per line
+        for idx, (name, yardage) in enumerate(tees):
+            y_position = base_y_uu + (idx * line_height_uu)
+
+            # Element 1: Tee name (right-aligned to colon)
+            tee_name_elem = self._create_tee_text_element(
+                name, colon_x_uu, y_position, 'end'
+            )
+
+            # Element 2: Colon (left-aligned at pivot point)
+            colon_elem = self._create_tee_text_element(
+                ':', colon_x_uu, y_position, 'start'
+            )
+
+            # Element 3: Yardage (left-aligned after colon)
+            yardage_elem = self._create_tee_text_element(
+                str(yardage), yardage_x_uu, y_position, 'start'
+            )
+
+            # Add to group in reading order
+            tee_group.append(tee_name_elem)
+            tee_group.append(colon_elem)
+            tee_group.append(yardage_elem)
+
+            logger.debug(
+                "Tee line %d: '%s' : %d at y=%.2f (colon_x=%.2f, yardage_x=%.2f)",
+                idx, name, yardage, y_position, colon_x_uu, yardage_x_uu
+            )
+
+        logger.info("Created tee yardage display with %d tees (3 elements per line)", len(tees))
+        return tee_group
 
 
 if __name__ == '__main__':
