@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>Test Import Clone</name>
+    <id>golf.cartographer.test_import_clone</id>
+
+    <effect>
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Cartographer"/>
+        </effects-menu>
+    </effect>
+
+    <script>
+        <command location="inx" interpreter="python">test_import_clone.py</command>
+    </script>
+</inkscape-extension>

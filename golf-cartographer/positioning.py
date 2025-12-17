@@ -30,209 +30,185 @@ class PositioningTool(inkex.EffectExtension):
 
     def effect(self):
         """
-        Test the simplest possible thing: can we measure EXISTING text elements?
+        Test the Glyph Library system - loading glyphs and composing text.
         """
-        from inkex import TextElement
+        from glyph_library import GlyphLibrary
+        from inkex import Rectangle
 
-        inkex.utils.debug("=== SIMPLE BBOX TEST ===")
-        inkex.utils.debug("\nLet's test if we can measure EXISTING text in the document...")
+        inkex.utils.debug("=== GLYPH LIBRARY TEST ===")
+        inkex.utils.debug("Testing JetBrainsMono Nerd Font glyph library")
+        inkex.utils.debug("")
 
-        # Find all existing text elements in the document
-        existing_texts = list(self.svg.findall('.//text', namespaces=inkex.NSS))
+        current_layer = self.svg.get_current_layer()
 
-        inkex.utils.debug(f"\nFound {len(existing_texts)} existing text elements in document")
+        try:
+            # Test 1: Load the glyph library
+            inkex.utils.debug("--- Test 1: Loading Glyph Library ---")
+            library = GlyphLibrary('glyph_libraries/JetBrainsMono Nerd Font.svg')
+            inkex.utils.debug(f"✓ Library loaded successfully")
+            inkex.utils.debug(f"  Available characters: {len(library.glyphs)}")
 
-        if existing_texts:
-            for i, text_elem in enumerate(existing_texts[:3]):  # Test first 3
-                inkex.utils.debug(f"\n--- Text element {i+1} ---")
-                inkex.utils.debug(f"  ID: {text_elem.get('id', 'no-id')}")
-                inkex.utils.debug(f"  Text content: {text_elem.text or '(in tspan)'}")
+            # Show first 20 characters
+            available = library.get_available_chars()
+            inkex.utils.debug(f"  Sample chars: {' '.join(available[:20])}")
+            inkex.utils.debug("")
 
-                # Try to get bbox
-                try:
-                    bbox = text_elem.bounding_box()
-                    if bbox:
-                        inkex.utils.debug(f"  ✓ bounding_box() SUCCESS!")
-                        inkex.utils.debug(f"    Width: {bbox.width:.4f} user units")
-                        inkex.utils.debug(f"    Height: {bbox.height:.4f} user units")
-                        inkex.utils.debug(f"    Left: {bbox.left:.4f}, Top: {bbox.top:.4f}")
-                        inkex.utils.debug(f"    Right: {bbox.right:.4f}, Bottom: {bbox.bottom:.4f}")
-                    else:
-                        inkex.utils.debug(f"  ✗ bounding_box() returned None")
-                except Exception as e:
-                    inkex.utils.debug(f"  ✗ Exception: {e}")
-        else:
-            inkex.utils.debug("\n⚠ No existing text found. Let's test with DIFFERENT coordinates...")
+            # DIAGNOSTIC: Measure actual glyph dimensions
+            inkex.utils.debug("--- DIAGNOSTIC: Raw Glyph Dimensions (24pt) ---")
+            test_chars = ['0', '3', '5', 'A', 'H']
+            for char in test_chars:
+                glyph = library.get_glyph(char)
+                if glyph is not None:
+                    bbox = glyph.bounding_box()
+                    if bbox is not None:
+                        inkex.utils.debug(f"  '{char}': width={bbox.width:.4f}, height={bbox.height:.4f}")
+            inkex.utils.debug("")
 
-            # Create TWO text elements at DIFFERENT positions
-            # If bbox is returning actual dimensions, they should be SAME size
-            # If bbox is returning coordinates, they'll be DIFFERENT
-            from inkex import TextElement, Tspan
+            # Test 2: Compose simple text at 24pt
+            inkex.utils.debug("--- Test 2: Simple Text at 24pt ---")
+            inkex.utils.debug(f"  Scale factor: 24/24 = 1.0 (no scaling)")
 
-            current_layer = self.svg.get_current_layer()
-
-            # Text #1: Position at (100, 100)
-            text1 = TextElement()
-            text1.set('x', '100')
-            text1.set('y', '100')
-            text1.style = {'font-size': '24pt', 'font-family': 'Arial'}
-            tspan1 = Tspan()
-            tspan1.text = 'Hello World'
-            text1.append(tspan1)
+            text1, width1, height1 = library.compose_text(
+                "350", x=20, y=40, font_size=24, spacing=2
+            )
             current_layer.append(text1)
 
-            # Text #2: SAME content, DIFFERENT position (200, 300)
-            text2 = TextElement()
-            text2.set('x', '200')
-            text2.set('y', '300')
-            text2.style = {'font-size': '24pt', 'font-family': 'Arial'}
-            tspan2 = Tspan()
-            tspan2.text = 'Hello World'
-            text2.append(tspan2)
+            # VALIDATION: Add marker at specified position and check actual bbox
+            self._add_position_marker(current_layer, 20, 40, "green")
+            actual_bbox = text1.bounding_box()
+            inkex.utils.debug(f"✓ Composed '350' at (20, 40)")
+            inkex.utils.debug(f"  Width: {width1:.2f} units, Height: {height1:.2f} units")
+            inkex.utils.debug(f"  Actual bbox: left={actual_bbox.left:.2f}, bottom={actual_bbox.bottom:.2f}, top={actual_bbox.top:.2f}")
+            inkex.utils.debug(f"  Expected: left=20, bottom=40")
+            inkex.utils.debug("")
+
+            # Test 3: Compose text at 18pt (smaller)
+            inkex.utils.debug("--- Test 3: Text at 18pt ---")
+            inkex.utils.debug(f"  Scale factor: 18/24 = 0.75 (75% size)")
+            text2, width2, height2 = library.compose_text(
+                "Par 4", x=20, y=60, font_size=18, spacing=2
+            )
             current_layer.append(text2)
 
-            inkex.utils.debug("\nCreated TWO identical text elements at DIFFERENT positions:")
-            inkex.utils.debug("  Text #1: 'Hello World' at (100, 100), 24pt Arial")
-            inkex.utils.debug("  Text #2: 'Hello World' at (200, 300), 24pt Arial")
-            inkex.utils.debug("\n⚠ CRITICAL TEST:")
-            inkex.utils.debug("  If bbox returns REAL dimensions → both should be ~same size")
-            inkex.utils.debug("  If bbox returns coordinates → they'll be different")
+            # VALIDATION: Add marker at specified position and check actual bbox
+            self._add_position_marker(current_layer, 20, 60, "green")
+            actual_bbox2 = text2.bounding_box()
+            inkex.utils.debug(f"✓ Composed 'Par 4' at (20, 60)")
+            inkex.utils.debug(f"  Width: {width2:.2f} units, Height: {height2:.2f} units")
+            inkex.utils.debug(f"  Actual bbox: left={actual_bbox2.left:.2f}, bottom={actual_bbox2.bottom:.2f}, top={actual_bbox2.top:.2f}")
+            inkex.utils.debug(f"  Expected: left=20, bottom=60")
+            inkex.utils.debug("")
 
-            # Measure both
-            bbox1 = text1.bounding_box()
-            bbox2 = text2.bounding_box()
+            # Test 4: Bottom alignment verification
+            inkex.utils.debug("--- Test 4: Bottom Alignment Test ---")
+            # Create three strings at same baseline (y=100)
+            baseline_y = 100
 
-            inkex.utils.debug("\n--- Text #1 Bounding Box ---")
-            if bbox1:
-                inkex.utils.debug(f"  Width: {bbox1.width:.4f}, Height: {bbox1.height:.4f}")
-                inkex.utils.debug(f"  Left: {bbox1.left:.4f}, Top: {bbox1.top:.4f}")
-            else:
-                inkex.utils.debug(f"  Result: None")
+            text3a, width3a, height3a = library.compose_text(
+                "ABC", x=20, y=baseline_y, font_size=24, spacing=2
+            )
+            current_layer.append(text3a)
+            self._add_position_marker(current_layer, 20, baseline_y, "green")
 
-            inkex.utils.debug("\n--- Text #2 Bounding Box ---")
-            if bbox2:
-                inkex.utils.debug(f"  Width: {bbox2.width:.4f}, Height: {bbox2.height:.4f}")
-                inkex.utils.debug(f"  Left: {bbox2.left:.4f}, Top: {bbox2.top:.4f}")
-            else:
-                inkex.utils.debug(f"  Result: None")
+            text3b, width3b, height3b = library.compose_text(
+                "xyz", x=70, y=baseline_y, font_size=24, spacing=2
+            )
+            current_layer.append(text3b)
+            self._add_position_marker(current_layer, 70, baseline_y, "green")
 
-            # Analysis
-            if bbox1 and bbox2:
-                inkex.utils.debug("\n=== VERDICT ===")
-                if abs(bbox1.width - bbox2.width) < 1.0 and abs(bbox1.height - bbox2.height) < 1.0:
-                    inkex.utils.debug("✓ SAME dimensions → bbox is returning ACTUAL TEXT SIZE!")
-                    inkex.utils.debug("  This means we CAN measure text reliably!")
-                else:
-                    inkex.utils.debug("✗ DIFFERENT dimensions → bbox is returning POSITION, not size")
-                    inkex.utils.debug("  Text #1: {:.1f}x{:.1f}".format(bbox1.width, bbox1.height))
-                    inkex.utils.debug("  Text #2: {:.1f}x{:.1f}".format(bbox2.width, bbox2.height))
-                    inkex.utils.debug("  This confirms text bbox measurements are NOT reliable")
+            text3c, width3c, height3c = library.compose_text(
+                "123", x=120, y=baseline_y, font_size=24, spacing=2
+            )
+            current_layer.append(text3c)
+            self._add_position_marker(current_layer, 120, baseline_y, "green")
 
-            # NEW TEST: Try converting text to path element
-            inkex.utils.debug("\n\n=== NEW APPROACH: TEXT TO PATH CONVERSION ===")
-            inkex.utils.debug("Instead of measuring text, let's convert to a path and measure THAT...")
+            # Draw baseline reference line
+            from inkex import Line
+            baseline = Line()
+            baseline.set('x1', '10')
+            baseline.set('y1', str(baseline_y))
+            baseline.set('x2', '180')
+            baseline.set('y2', str(baseline_y))
+            baseline.style = {'stroke': '#ff0000', 'stroke-width': '0.5', 'stroke-dasharray': '2,2'}
+            current_layer.append(baseline)
 
-            # Create a fresh text element for path conversion
-            from inkex import PathElement
+            # VALIDATION: Check actual bottom positions
+            bbox3a = text3a.bounding_box()
+            bbox3b = text3b.bounding_box()
+            bbox3c = text3c.bounding_box()
 
-            text_for_path = TextElement()
-            text_for_path.set('x', '50')
-            text_for_path.set('y', '50')
-            text_for_path.style = {'font-size': '24pt', 'font-family': 'Arial'}
-            tspan_path = Tspan()
-            tspan_path.text = 'ABC'
-            text_for_path.append(tspan_path)
-            current_layer.append(text_for_path)
+            inkex.utils.debug(f"✓ Created three text groups on baseline y={baseline_y}")
+            inkex.utils.debug(f"  'ABC' at x=20: {width3a:.2f}×{height3a:.2f}, actual bottom={bbox3a.bottom:.2f}")
+            inkex.utils.debug(f"  'xyz' at x=70: {width3b:.2f}×{height3b:.2f}, actual bottom={bbox3b.bottom:.2f}")
+            inkex.utils.debug(f"  '123' at x=120: {width3c:.2f}×{height3c:.2f}, actual bottom={bbox3c.bottom:.2f}")
+            inkex.utils.debug(f"  Red dashed line shows shared baseline (green markers at each specified position)")
+            inkex.utils.debug("")
 
-            inkex.utils.debug("\nCreated text: 'ABC' at (50, 50), 24pt Arial")
+            # Test 5: Right-align test (now possible with accurate measurements!)
+            inkex.utils.debug("--- Test 5: Right Alignment Test ---")
+            right_edge = 180
+            # Compose at x=0 first to get width, then position
+            temp_group, temp_width, temp_height = library.compose_text(
+                "RIGHT", x=0, y=0, font_size=24, spacing=2
+            )
+            # Now create it at the correct position
+            text4, width4, height4 = library.compose_text(
+                "RIGHT", x=right_edge - temp_width, y=140, font_size=24, spacing=2
+            )
+            current_layer.append(text4)
 
-            # Try multiple path conversion approaches
-            inkex.utils.debug("\n--- Approach 1: to_path_element() ---")
-            try:
-                path_elem = text_for_path.to_path_element()
-                if path_elem is not None:
-                    inkex.utils.debug(f"  Path created! Type: {type(path_elem)}")
-                    inkex.utils.debug(f"  Path 'd' attribute length: {len(path_elem.get('d', ''))}")
-                    inkex.utils.debug(f"  Path 'd' content: {path_elem.get('d', '(empty)')[:100]}...")
+            # Draw right edge reference line
+            from inkex import Line
+            right_line = Line()
+            right_line.set('x1', str(right_edge))
+            right_line.set('y1', '125')
+            right_line.set('x2', str(right_edge))
+            right_line.set('y2', '155')
+            right_line.style = {'stroke': '#0000ff', 'stroke-width': '0.5', 'stroke-dasharray': '2,2'}
+            current_layer.append(right_line)
 
-                    # Try to measure the path
-                    path_bbox = path_elem.bounding_box()
-                    if path_bbox:
-                        inkex.utils.debug(f"  ✓ PATH BBOX SUCCESS!")
-                        inkex.utils.debug(f"    Width: {path_bbox.width:.4f}")
-                        inkex.utils.debug(f"    Height: {path_bbox.height:.4f}")
-                    else:
-                        inkex.utils.debug(f"  ✗ Path bbox returned None")
-                else:
-                    inkex.utils.debug(f"  ✗ to_path_element() returned None")
-            except Exception as e:
-                inkex.utils.debug(f"  ✗ Exception: {e}")
+            inkex.utils.debug(f"✓ Right-aligned 'RIGHT' to x={right_edge}")
+            inkex.utils.debug(f"  Text width: {width4:.2f} units")
+            inkex.utils.debug(f"  Starting x: {right_edge - width4:.2f}")
+            inkex.utils.debug(f"  Blue dashed line shows right edge")
+            inkex.utils.debug("")
 
-            inkex.utils.debug("\n--- Approach 2: Create PathElement manually ---")
-            try:
-                # Try to get path data using get_path()
-                path_data = text_for_path.get_path()
-                if path_data:
-                    inkex.utils.debug(f"  get_path() returned: {type(path_data)}")
-                    inkex.utils.debug(f"  Path data: {str(path_data)[:100]}...")
+            # Test 6: Text at 48pt (double size)
+            inkex.utils.debug("--- Test 6: Text at 48pt ---")
+            inkex.utils.debug(f"  Scale factor: 48/24 = 2.0 (200% size)")
+            text5, width5, height5 = library.compose_text(
+                "BIG", x=20, y=200, font_size=48, spacing=3
+            )
+            current_layer.append(text5)
 
-                    # Create a path element manually
-                    manual_path = PathElement()
-                    manual_path.set('d', str(path_data))
-                    manual_path.style = text_for_path.style
-                    current_layer.append(manual_path)
+            # VALIDATION: Add marker at specified position and check actual bbox
+            self._add_position_marker(current_layer, 20, 200, "green")
+            actual_bbox5 = text5.bounding_box()
+            inkex.utils.debug(f"✓ Composed 'BIG' at (20, 200)")
+            inkex.utils.debug(f"  Width: {width5:.2f} units, Height: {height5:.2f} units")
+            inkex.utils.debug(f"  Actual bbox: left={actual_bbox5.left:.2f}, bottom={actual_bbox5.bottom:.2f}, top={actual_bbox5.top:.2f}")
+            inkex.utils.debug(f"  Expected: left=20, bottom=200")
+            inkex.utils.debug("")
 
-                    # Measure it
-                    manual_bbox = manual_path.bounding_box()
-                    if manual_bbox:
-                        inkex.utils.debug(f"  ✓ MANUAL PATH BBOX SUCCESS!")
-                        inkex.utils.debug(f"    Width: {manual_bbox.width:.4f}")
-                        inkex.utils.debug(f"    Height: {manual_bbox.height:.4f}")
-                    else:
-                        inkex.utils.debug(f"  ✗ Manual path bbox returned None")
-                else:
-                    inkex.utils.debug(f"  ✗ get_path() returned None")
-            except Exception as e:
-                inkex.utils.debug(f"  ✗ Exception: {e}")
+            inkex.utils.debug("=== ALL TESTS COMPLETE ===")
+            inkex.utils.debug("✓ Glyph library system is working!")
+            inkex.utils.debug("")
+            inkex.utils.debug("Visual checks:")
+            inkex.utils.debug("  1. All text should be readable and properly formed")
+            inkex.utils.debug("  2. ABC, xyz, 123 should align on red baseline")
+            inkex.utils.debug("  3. 'RIGHT' should align to blue vertical line")
+            inkex.utils.debug("  4. Font sizes should be visibly different")
 
-        inkex.utils.debug("\n\n=== FINAL CONCLUSION ===")
-        inkex.utils.debug("Can we convert text to paths and measure those?")
-        inkex.utils.debug("If YES → we have a reliable measurement system!")
-        inkex.utils.debug("If NO → font-based calculations are the only option")
+        except FileNotFoundError as e:
+            inkex.utils.debug(f"✗ ERROR: {e}")
+            inkex.utils.debug("")
+            inkex.utils.debug("Make sure the glyph library file exists:")
+            inkex.utils.debug("  golf-cartographer/glyph_libraries/JetBrainsMono Nerd Font.svg")
 
-        return
-
-        # Step 6: Calculate offset to align to bottom-right corner
-        # We want bbox.right = canvas_width and bbox.bottom = canvas_height
-        offset_x = canvas_width - path_bbox.right
-        offset_y = canvas_height - path_bbox.bottom
-
-        inkex.utils.debug(f"\nStep 5: Calculating position adjustment for bottom-right alignment")
-        inkex.utils.debug(f"  Target: bbox.right = {canvas_width:.4f}, bbox.bottom = {canvas_height:.4f}")
-        inkex.utils.debug(f"  Current: bbox.right = {path_bbox.right:.4f}, bbox.bottom = {path_bbox.bottom:.4f}")
-        inkex.utils.debug(f"  Offset needed: dx = {offset_x:.4f}, dy = {offset_y:.4f}")
-
-        # Step 7: Apply transform to move path
-        from inkex import Transform
-        transform = Transform(f"translate({offset_x}, {offset_y})")
-        path.transform = transform @ path.transform
-
-        inkex.utils.debug(f"\nStep 6: Applied transform to path")
-        inkex.utils.debug(f"  Transform: translate({offset_x:.4f}, {offset_y:.4f})")
-
-        # Step 8: Verify final position
-        final_bbox = path.bounding_box()
-        inkex.utils.debug(f"\nFinal Bounding Box (after repositioning):")
-        inkex.utils.debug(f"  Left: {final_bbox.left:.4f} user units ({self.svg.uutounit(final_bbox.left, 'mm'):.4f} mm)")
-        inkex.utils.debug(f"  Top: {final_bbox.top:.4f} user units ({self.svg.uutounit(final_bbox.top, 'mm'):.4f} mm)")
-        inkex.utils.debug(f"  Right: {final_bbox.right:.4f} user units ({self.svg.uutounit(final_bbox.right, 'mm'):.4f} mm)")
-        inkex.utils.debug(f"  Bottom: {final_bbox.bottom:.4f} user units ({self.svg.uutounit(final_bbox.bottom, 'mm'):.4f} mm)")
-        inkex.utils.debug(f"  Width: {final_bbox.width:.4f} user units ({self.svg.uutounit(final_bbox.width, 'mm'):.4f} mm)")
-        inkex.utils.debug(f"  Height: {final_bbox.height:.4f} user units ({self.svg.uutounit(final_bbox.height, 'mm'):.4f} mm)")
-
-        inkex.utils.debug(f"\n✓ Text converted to paths and aligned to bottom-right corner")
-        inkex.utils.debug(f"  Bbox.right should equal canvas width ({canvas_width:.4f})")
-        inkex.utils.debug(f"  Bbox.bottom should equal canvas height ({canvas_height:.4f})")
+        except Exception as e:
+            inkex.utils.debug(f"✗ UNEXPECTED ERROR: {e}")
+            import traceback
+            inkex.utils.debug(traceback.format_exc())
 
     def _get_target_elements(self):
         """Get elements to process based on apply_to option."""
@@ -316,6 +292,31 @@ class PositioningTool(inkex.EffectExtension):
         }
 
         return alignment_map.get(self.options.alignment, (0, 0))
+
+    def _add_position_marker(self, layer, x, y, color):
+        """
+        Add a crosshair marker at the specified position for validation.
+
+        Args:
+            layer: The layer to add the marker to
+            x: X coordinate
+            y: Y coordinate
+            color: Color for the marker (e.g., 'green', 'red')
+        """
+        from inkex import Circle
+
+        # Create a small circle at the position
+        marker = Circle()
+        marker.set('cx', str(x))
+        marker.set('cy', str(y))
+        marker.set('r', '1.5')  # 1.5mm radius
+        marker.style = {
+            'fill': color,
+            'fill-opacity': '0.7',
+            'stroke': 'black',
+            'stroke-width': '0.2'
+        }
+        layer.append(marker)
 
 
 if __name__ == '__main__':

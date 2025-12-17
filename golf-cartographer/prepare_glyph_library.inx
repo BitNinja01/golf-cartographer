@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>Prepare Glyph Library</name>
+    <id>com.golfcartographer.prepare_glyph_library</id>
+
+    <param name="notebook" type="notebook">
+        <page name="prepare" gui-text="Prepare Glyphs">
+            <param name="font_family" type="string" gui-text="Font Family:">Arial</param>
+            <param name="font_style" type="optiongroup" appearance="combo" gui-text="Font Style:">
+                <option value="normal">Regular</option>
+                <option value="bold">Bold</option>
+                <option value="italic">Italic</option>
+                <option value="bold italic">Bold Italic</option>
+            </param>
+        </page>
+
+        <page name="show_fonts" gui-text="Show Fonts">
+            <param name="show_fonts_info" type="description">
+Click Apply to list all available fonts.
+            </param>
+        </page>
+    </param>
+
+    <effect>
+        <object-type>all</object-type>
+        <effects-menu>
+            <submenu name="Golf Cartographer"/>
+        </effects-menu>
+    </effect>
+
+    <script>
+        <command location="inx" interpreter="python">prepare_glyph_library.py</command>
+    </script>
+</inkscape-extension>

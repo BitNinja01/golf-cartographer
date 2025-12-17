@@ -29,6 +29,8 @@ from typing import Optional
 import inkex
 from inkex import Circle, TextElement, Tspan, Group, Style, Transform
 
+from glyph_library import GlyphLibrary
+
 # Configure module logger
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,8 @@ class AddHoleLabel(inkex.EffectExtension):
 
     def add_arguments(self, pars: argparse.ArgumentParser) -> None:
         """Add command-line arguments."""
+        pars.add_argument("--notebook", type=str, default="label",
+                         help="Active notebook tab")
         pars.add_argument("--hole_number", type=int, default=1,
                          help="Hole number (1-18)")
         pars.add_argument("--par", type=int, default=4,
@@ -120,27 +124,63 @@ class AddHoleLabel(inkex.EffectExtension):
                          help="Font size in points")
         pars.add_argument("--font_weight", type=str, default="bold",
                          help="Font weight (bold or normal)")
-        pars.add_argument("--font_family", type=str, default="Arial, Liberation Sans, sans-serif",
-                         help="Font family for text")
+        pars.add_argument("--font_family", type=str, default="JetBrainsMono Nerd Font",
+                         help="Glyph library font name (without .svg extension)")
 
     def effect(self) -> None:
         """
         Main execution method for Add Hole Label Tool.
 
         Execution Flow:
-        1. Validate parameters (hole number, par, font size)
-        2. Validate that hole group exists (from Stage 3)
-        3. Check for duplicate labels (remove if exists)
-        4. Create label group with circle and text elements
-        5. Add label group to hole group with inverse transform
-        6. Create and add tee yardages to document root (if specified)
+        1. Check if we're on the "List Fonts" tab - if so, show available fonts and exit
+        2. Validate parameters (hole number, par, font size)
+        3. Load glyph library for accurate text measurements
+        4. Validate that hole group exists (from Stage 3)
+        5. Check for duplicate labels (remove if exists)
+        6. Create label group with circle and text elements
+        7. Add label group to hole group with inverse transform
+        8. Create and add tee yardages to document root (if specified)
 
         Validation ensures Stage 3 (Auto-Place Holes) has been run before
         attempting to add labels.
         """
+        # Check which tab is active
+        if self.options.notebook == "list_fonts":
+            self.show_available_fonts()
+            return  # Exit after showing fonts
+
         root = self.document.getroot()
         hole_num = self.options.hole_number
         par = self.options.par
+
+        # Load glyph library for accurate text measurements
+        import os
+        font_name = self.options.font_family.strip()
+        library_path = os.path.join(
+            os.path.dirname(__file__),
+            'glyph_libraries',
+            f'{font_name}.svg'
+        )
+
+        # Check if library file exists
+        if not os.path.exists(library_path):
+            logger.error("Glyph library not found: %s", library_path)
+            inkex.errormsg(f"Error: Glyph library font '{font_name}' not found!")
+            inkex.errormsg(f"Expected file: {library_path}")
+            inkex.errormsg("")
+            inkex.errormsg("Use the 'List Fonts' tab to see available fonts.")
+            return
+
+        try:
+            self.glyph_library = GlyphLibrary(library_path)
+            logger.info("Loaded glyph library from: %s", library_path)
+        except Exception as e:
+            logger.error("Failed to load glyph library: %s", e)
+            inkex.errormsg(f"Error: Could not load glyph library: {e}")
+            inkex.errormsg("")
+            inkex.errormsg(f"Font: {font_name}")
+            inkex.errormsg(f"Path: {library_path}")
+            return
 
         # Parameter validation
         if not 1 <= hole_num <= 18:
@@ -316,13 +356,12 @@ class AddHoleLabel(inkex.EffectExtension):
         })
         return circle
 
-    def _create_centered_hole_number(self, hole_num: int, circle_cx: float, circle_cy: float) -> TextElement:
+    def _create_centered_hole_number(self, hole_num: int, circle_cx: float, circle_cy: float) -> Group:
         """
-        Create hole number as text and center it precisely in the circle.
+        Create hole number as glyph-based text and center it precisely in the circle.
 
-        Uses SVG's text-anchor and dominant-baseline properties to center text
-        at the specified point. This is the standard SVG approach for text centering
-        and is simpler than transform-based positioning.
+        Uses GlyphLibrary for accurate measurements and positioning. Calculates the
+        position offset to center the text bounding box within the circle.
 
         Args:
             hole_num: Hole number (1-18)
@@ -330,37 +369,45 @@ class AddHoleLabel(inkex.EffectExtension):
             circle_cy: Circle center Y in user units
 
         Returns:
-            TextElement with hole number, centered in circle
+            Group containing glyph paths for hole number, centered in circle
         """
         logger.info("Creating centered hole number %d at circle center (%.2f, %.2f)",
                    hole_num, circle_cx, circle_cy)
 
-        # Small vertical offset to fine-tune centering (approximately 0.25mm down)
-        vertical_offset = 0.9  # user units
+        # Compose text using glyph library to get accurate dimensions
+        # Note: We'll position at (0, 0) first to get dimensions, then reposition
+        text_group, width, height = self.glyph_library.compose_text(
+            str(hole_num),
+            x=0,
+            y=0,
+            font_size=self.options.font_size,
+            spacing=0  # No extra spacing for single/double digit numbers
+        )
 
-        # Create text element at circle center with centering styles
-        text = TextElement()
-        text.set('x', str(circle_cx))
-        text.set('y', str(circle_cy + vertical_offset))
-        text.style = Style({
-            'font-size': f'{self.options.font_size}pt',
-            'font-family': self.options.font_family,
-            'font-weight': self.options.font_weight,
-            'fill': '#000000',                 # Black text color
-            'stroke': 'none',                  # Ensure no stroke is applied
-            'text-anchor': 'middle',           # Center horizontally at x position
-            'dominant-baseline': 'middle'      # Center vertically at y position
-        })
+        # Calculate position to center the text bounding box in the circle
+        # Text is positioned by bottom-left corner, so:
+        # - Horizontal centering: x = circle_cx - (width / 2)
+        # - Vertical centering: y = circle_cy + (height / 2)
+        centered_x = circle_cx - (width / 2)
+        centered_y = circle_cy + (height / 2)
 
-        tspan = Tspan()
-        tspan.text = str(hole_num)
-        text.append(tspan)
+        logger.info("Text dimensions: %.2f × %.2f mm, centered at (%.2f, %.2f)",
+                   width, height, centered_x, centered_y)
 
-        logger.info("Successfully created centered hole number %d", hole_num)
+        # Recompose at the centered position
+        text_group, width, height = self.glyph_library.compose_text(
+            str(hole_num),
+            x=centered_x,
+            y=centered_y,
+            font_size=self.options.font_size,
+            spacing=0
+        )
 
-        return text
+        logger.info("Successfully created centered hole number %d with glyph library", hole_num)
 
-    def _create_par_text(self, par: int, cx_uu: float, cy_uu: float, radius_uu: float) -> TextElement:
+        return text_group
+
+    def _create_par_text(self, par: int, cx_uu: float, cy_uu: float, radius_uu: float) -> Group:
         """
         Create par text positioned below circle.
 
@@ -374,85 +421,83 @@ class AddHoleLabel(inkex.EffectExtension):
             radius_uu: Circle radius in user units
 
         Returns:
-            TextElement containing par information
+            Group containing glyph paths for par text
         """
-        text = TextElement()
+        # First compose to get dimensions for centering
+        text_group, width, height = self.glyph_library.compose_text(
+            str(par),
+            x=0,
+            y=0,
+            font_size=self.PAR_TEXT_FONT_SIZE,
+            spacing=0
+        )
 
         # Position below circle with offset
         offset_uu = self.svg.unittouu(f"{self.PAR_TEXT_OFFSET}in")
-        text.set('x', str(cx_uu))
-        text.set('y', str(cy_uu + radius_uu + offset_uu))
+        # Center horizontally under the circle
+        text_x = cx_uu - (width / 2)
+        # Position below circle bottom edge + offset (use bottom-left positioning)
+        text_y = cy_uu + radius_uu + offset_uu
 
-        # Fixed font size for par text (independent of hole number font size)
-        text.style = Style({
-            'font-size': f'{self.PAR_TEXT_FONT_SIZE}pt',
-            'font-family': self.options.font_family,
-            'font-weight': 'normal',
-            'fill': '#000000',                 # Black text color
-            'stroke': 'none',                  # Ensure no stroke is applied
-            'text-anchor': 'middle',
-            'dominant-baseline': 'hanging'
-        })
+        # Recompose at final position
+        text_group, width, height = self.glyph_library.compose_text(
+            str(par),
+            x=text_x,
+            y=text_y,
+            font_size=self.PAR_TEXT_FONT_SIZE,
+            spacing=0
+        )
 
-        tspan = Tspan()
-        tspan.text = str(par)
-        text.append(tspan)
+        logger.info("Created par text '%s' (%.2f × %.2f mm) at (%.2f, %.2f)",
+                   par, width, height, text_x, text_y)
 
-        return text
+        return text_group
 
     def _create_tee_text_element(
         self,
         text_content: str,
         x_uu: float,
-        y_uu: float,
-        text_anchor: str
-    ) -> TextElement:
+        y_uu: float
+    ) -> tuple[Group, float, float]:
         """
-        Create a styled text element for tee yardage display.
+        Create a glyph-based text element for tee yardage display.
+
+        Uses GlyphLibrary for accurate measurements and consistent rendering.
 
         Args:
             text_content: The text to display
-            x_uu: X position in user units
-            y_uu: Y position in user units
-            text_anchor: SVG text-anchor value ('start', 'middle', or 'end')
+            x_uu: X position in user units (bottom-left corner)
+            y_uu: Y position in user units (bottom-left corner)
 
         Returns:
-            Configured TextElement with standard tee yardage styling
+            Tuple of (text_group, width, height) with accurate measurements
         """
-        text = TextElement()
-        text.set('x', str(x_uu))
-        text.set('y', str(y_uu))
-        text.style = Style({
-            'font-size': f'{self.TEE_YARDAGE_FONT_SIZE}pt',
-            'font-family': self.options.font_family,
-            'font-weight': 'normal',
-            'fill': '#000000',
-            'stroke': 'none',
-            'text-anchor': text_anchor,
-            'dominant-baseline': 'hanging'
-        })
+        text_group, width, height = self.glyph_library.compose_text(
+            text_content,
+            x=x_uu,
+            y=y_uu,
+            font_size=self.TEE_YARDAGE_FONT_SIZE,
+            spacing=0
+        )
 
-        tspan = Tspan()
-        tspan.text = text_content
-        text.append(tspan)
-
-        return text
+        return text_group, width, height
 
     def _create_tee_yardages(self, hole_num: int) -> Optional[Group]:
         """
         Create tee box yardage display with three-element formatting and bottom-up positioning.
 
-        Uses font-based calculations for reliable spacing. Text element bounding boxes are
-        unreliable until after layout/rendering, so dimensions are calculated from font metrics.
+        Uses GlyphLibrary for accurate text measurements and precise positioning. Unlike the
+        previous font-based approximations, this provides exact dimensions for perfect alignment.
 
-        Each line displays: "TeeName : 325" using three separate text elements:
-        1. Tee name (right-aligned before colon)
-        2. Colon (left-aligned at pivot point, ~40% of font size width)
+        Each line displays: "TeeName : 325" using three separate glyph groups:
+        1. Tee name (right-aligned before colon using actual width)
+        2. Colon (positioned at pivot point with measured width)
         3. Yardage (left-aligned after colon with spacing)
 
         Positioning strategy:
         - Anchor to lower right corner of top area bounding box (with margin)
-        - Calculate colon width as 40% of font size (reliable for proportional fonts)
+        - Measure actual colon width from glyph library (not approximated)
+        - Measure each tee name width for precise right-alignment
         - Start with bottom-most tee (last in list)
         - Position subsequent tees upward using user-configurable line spacing
 
@@ -460,7 +505,7 @@ class AddHoleLabel(inkex.EffectExtension):
             hole_num: Hole number (1-18) for unique group ID
 
         Returns:
-            Group containing tee yardage text elements, or None if no tees specified
+            Group containing tee yardage glyph groups, or None if no tees specified
         """
         # Collect tee boxes with non-zero yardages
         tees: list[tuple[str, int]] = []
@@ -496,39 +541,38 @@ class AddHoleLabel(inkex.EffectExtension):
         )
 
         # Debug output for Inkscape UI
-        inkex.utils.debug(f"=== TEE YARDAGE DEBUG ===")
+        inkex.utils.debug(f"=== TEE YARDAGE DEBUG (GLYPH LIBRARY) ===")
         inkex.utils.debug(f"Anchor point: ({self.TEE_YARDAGE_ANCHOR_X:.2f}\", {self.TEE_YARDAGE_ANCHOR_Y:.2f}\")")
         inkex.utils.debug(f"Anchor in user units: colon_x={colon_x_uu:.2f}px, base_y={base_y_uu:.2f}px")
         inkex.utils.debug(f"Element spacing: {element_spacing_uu:.2f}px (horizontal)")
         inkex.utils.debug(f"Line spacing: {line_spacing_uu:.2f}px (vertical)")
         inkex.utils.debug(f"Processing {len(tees)} tees in reverse order (bottom-up)")
 
-        # STEP 1: Calculate colon width from font metrics
-        inkex.utils.debug(f"\n--- STEP 1: Calculating element spacing from font metrics ---")
+        # STEP 1: Measure actual colon width using glyph library
+        inkex.utils.debug(f"\n--- STEP 1: Measuring colon width with glyph library ---")
 
-        # Text elements don't have reliable bounding box measurements until after layout/rendering.
-        # Calculate colon width from font size: for proportional fonts, colon is ~40% of font size
-        font_size_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_FONT_SIZE}pt")
-        colon_width_uu = font_size_uu * 0.4  # Approximately 2-3px for 5pt font
+        # Get actual colon width from glyph library (no approximations!)
+        _, colon_width_uu, colon_height_uu = self._create_tee_text_element(
+            ':', 0, 0
+        )
 
-        inkex.utils.debug(f"Font size: {self.TEE_YARDAGE_FONT_SIZE}pt = {font_size_uu:.2f}px")
-        inkex.utils.debug(f"Calculated colon width: {colon_width_uu:.2f}px (40% of font size)")
-        inkex.utils.debug(f"Using fixed line spacing: {line_spacing_uu:.2f}px")
-        logger.info("Calculated colon width: %.2fpx from font size %.2fpx", colon_width_uu, font_size_uu)
+        inkex.utils.debug(f"Font size: {self.TEE_YARDAGE_FONT_SIZE}pt")
+        inkex.utils.debug(f"Measured colon width: {colon_width_uu:.2f}px (actual, not estimated)")
+        inkex.utils.debug(f"Using line spacing: {line_spacing_uu:.2f}px")
+        logger.info("Measured colon width: %.2fpx (actual measurement)", colon_width_uu)
 
-        # Calculate element positions with configurable spacing
+        # Calculate yardage position (colon position is anchor, yardage starts after)
         # Layout: [name] <element_spacing> [:] <element_spacing> [yardage]
-        name_x_uu = colon_x_uu - element_spacing_uu  # Name ends before colon
+        # Note: Name position will be calculated per-line based on actual name width
         yardage_x_uu = colon_x_uu + colon_width_uu + element_spacing_uu  # Yardage starts after colon
 
-        inkex.utils.debug(f"\nElement positions:")
-        inkex.utils.debug(f"  Name x: {name_x_uu:.2f}px (right-aligned, {element_spacing_uu:.0f}px gap to colon)")
-        inkex.utils.debug(f"  Colon x: {colon_x_uu:.2f}px (left-aligned, {colon_width_uu:.2f}px wide)")
+        inkex.utils.debug(f"\nFixed element positions:")
+        inkex.utils.debug(f"  Colon x: {colon_x_uu:.2f}px (anchor point, {colon_width_uu:.2f}px wide)")
         inkex.utils.debug(f"  Yardage x: {yardage_x_uu:.2f}px (left-aligned, {element_spacing_uu:.0f}px gap from colon)")
 
-        # STEP 2: Create all elements at their correct positions
+        # STEP 2: Create all elements at their correct positions with accurate measurements
         inkex.utils.debug(f"\n--- STEP 2: Creating {len(tees)} tee lines (bottom-up positioning) ---")
-        created_elements: list[tuple[TextElement, TextElement, TextElement]] = []
+        created_elements: list[tuple[Group, Group, Group]] = []
         current_y_uu = base_y_uu
 
         # Process tees in reverse order (bottom to top)
@@ -537,23 +581,32 @@ class AddHoleLabel(inkex.EffectExtension):
             inkex.utils.debug(f"\n--- Tee line {idx} (from bottom): '{name}' : {yardage} ---")
             inkex.utils.debug(f"Creating at y={current_y_uu:.2f}px")
 
-            # Create the three elements for this line with proper spacing
-            tee_name_elem = self._create_tee_text_element(
-                name, name_x_uu, current_y_uu, 'end'
+            # Measure name width to calculate right-aligned position
+            _, name_width_uu, _ = self._create_tee_text_element(name, 0, 0)
+
+            # Position name so its right edge is at (colon_x - spacing)
+            name_x_uu = colon_x_uu - element_spacing_uu - name_width_uu
+
+            inkex.utils.debug(f"  Name '{name}' width: {name_width_uu:.2f}px")
+            inkex.utils.debug(f"  Name x: {name_x_uu:.2f}px (right-aligned with {element_spacing_uu:.0f}px gap to colon)")
+
+            # Create the three elements for this line with measured positions
+            tee_name_elem, _, _ = self._create_tee_text_element(
+                name, name_x_uu, current_y_uu
             )
-            colon_elem = self._create_tee_text_element(
-                ':', colon_x_uu, current_y_uu, 'start'
+            colon_elem, _, _ = self._create_tee_text_element(
+                ':', colon_x_uu, current_y_uu
             )
-            yardage_elem = self._create_tee_text_element(
-                str(yardage), yardage_x_uu, current_y_uu, 'start'
+            yardage_elem, _, _ = self._create_tee_text_element(
+                str(yardage), yardage_x_uu, current_y_uu
             )
 
-            # Store elements for grouping (no DOM manipulation needed - using calculated dimensions)
+            # Store elements for grouping
             created_elements.append((tee_name_elem, colon_elem, yardage_elem))
 
             logger.debug(
-                "Tee line %d (from bottom): '%s' : %d at y=%.2f (colon_x=%.2f, yardage_x=%.2f)",
-                idx, name, yardage, current_y_uu, colon_x_uu, yardage_x_uu
+                "Tee line %d (from bottom): '%s' : %d at y=%.2f (name_x=%.2f, colon_x=%.2f, yardage_x=%.2f)",
+                idx, name, yardage, current_y_uu, name_x_uu, colon_x_uu, yardage_x_uu
             )
 
             # Position next line above this one
@@ -569,20 +622,83 @@ class AddHoleLabel(inkex.EffectExtension):
         tee_group.label = f'tee_yardages_{hole_num:02d}'
 
         # Add elements to group (reverse to maintain top-to-bottom order in XML)
-        inkex.utils.debug(f"Adding {len(created_elements)} lines (3 elements each) to group")
+        inkex.utils.debug(f"Adding {len(created_elements)} lines (3 glyph groups each) to group")
         for tee_name_elem, colon_elem, yardage_elem in reversed(created_elements):
             tee_group.append(tee_name_elem)
             tee_group.append(colon_elem)
             tee_group.append(yardage_elem)
 
-        inkex.utils.debug(f"✓ Complete! Created {len(tees)} tee lines with bottom-up calculated spacing")
+        inkex.utils.debug(f"✓ Complete! Created {len(tees)} tee lines with glyph library (accurate measurements)")
         inkex.utils.debug(f"=== END TEE YARDAGE DEBUG ===\n")
 
         logger.info(
-            "Created tee yardage display with %d tees (bottom-up, font-based spacing)",
+            "Created tee yardage display with %d tees (bottom-up, glyph-based with accurate widths)",
             len(tees)
         )
         return tee_group
+
+    def show_available_fonts(self) -> None:
+        """
+        Show all available glyph library fonts in the glyph_libraries folder.
+
+        Lists all .svg files in the glyph_libraries directory and displays them
+        using Inkscape's error message system. Users can copy these exact names
+        (without .svg extension) into the Glyph Library Font field.
+        """
+        import os
+        from pathlib import Path
+
+        # Get glyph_libraries folder path
+        glyph_dir = Path(os.path.dirname(__file__)) / 'glyph_libraries'
+
+        if not glyph_dir.exists():
+            inkex.errormsg("=" * 60)
+            inkex.errormsg("ERROR: glyph_libraries folder not found!")
+            inkex.errormsg("=" * 60)
+            inkex.errormsg(f"Expected location: {glyph_dir}")
+            inkex.errormsg("")
+            inkex.errormsg("Please create the glyph_libraries folder and add")
+            inkex.errormsg("glyph library .svg files using the Prepare Glyph Library tool.")
+            inkex.errormsg("=" * 60)
+            return
+
+        # Find all .svg files (excluding TEMPLATE.svg and README.md)
+        svg_files = sorted([
+            f.stem for f in glyph_dir.glob('*.svg')
+            if f.name not in ['TEMPLATE.svg']
+        ])
+
+        if not svg_files:
+            inkex.errormsg("=" * 60)
+            inkex.errormsg("NO GLYPH LIBRARY FONTS FOUND")
+            inkex.errormsg("=" * 60)
+            inkex.errormsg(f"Folder: {glyph_dir}")
+            inkex.errormsg("")
+            inkex.errormsg("Please create glyph libraries using:")
+            inkex.errormsg("Extensions → Golf Cartographer → Prepare Glyph Library")
+            inkex.errormsg("=" * 60)
+            return
+
+        # Display available fonts
+        inkex.errormsg("=" * 60)
+        inkex.errormsg(f"AVAILABLE GLYPH LIBRARY FONTS ({len(svg_files)} found)")
+        inkex.errormsg("=" * 60)
+        inkex.errormsg(f"Location: {glyph_dir}")
+        inkex.errormsg("")
+
+        for font_name in svg_files:
+            inkex.errormsg(f"  • {font_name}")
+
+        inkex.errormsg("")
+        inkex.errormsg("=" * 60)
+        inkex.errormsg("USAGE:")
+        inkex.errormsg("1. Copy the exact font name from the list above")
+        inkex.errormsg("2. Go to the 'Add Label' tab")
+        inkex.errormsg("3. Paste the name into the 'Glyph Library Font' field")
+        inkex.errormsg("4. Do NOT include the .svg extension")
+        inkex.errormsg("=" * 60)
+
+        logger.info("Listed %d available glyph library fonts", len(svg_files))
 
 
 if __name__ == '__main__':
