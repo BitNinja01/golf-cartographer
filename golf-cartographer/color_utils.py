@@ -174,7 +174,7 @@ def check_color_match(
 
         return r_match and g_match and b_match
 
-    except (ValueError, AttributeError) as e:
+    except (ValueError, AttributeError, inkex.colors.ColorIdError) as e:
         logger.debug("Color match check failed for '%s': %s", style_attr, e)
         return False
 

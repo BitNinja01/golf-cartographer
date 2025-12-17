@@ -51,12 +51,17 @@ class AddHoleLabel(inkex.EffectExtension):
     for simpler positioning.
     """
 
+    # Consistent margin from bounding box edges for all positioned elements
+    BOUNDING_BOX_MARGIN: float = 0.092  # inches - standard margin for circle badge and tee yardages
+
     # Fixed position for hole label circle (top-right area of page)
-    # Coordinates define the bounding box upper-left corner
+    # Top area from auto_place_holes.py BOUNDING_BOX: x=0.257", y=0.247", w=3.736", h=6.756"
+    # Top-right corner: (0.257 + 3.736, 0.247) = (3.993", 0.247")
+    # Coordinates define the bounding box upper-left corner with margin applied
     # (Circle centers are calculated from this + radius offset)
-    CIRCLE_BBOX_UL_X: float = 3.395  # inches
-    CIRCLE_BBOX_UL_Y: float = 0.339  # inches
     CIRCLE_DIAMETER: float = 0.506  # inches
+    CIRCLE_BBOX_UL_X: float = 3.993 - CIRCLE_DIAMETER - BOUNDING_BOX_MARGIN  # 3.395" inches
+    CIRCLE_BBOX_UL_Y: float = 0.247 + BOUNDING_BOX_MARGIN  # 0.339" inches
 
     # Calculate circle center from bounding box upper-left
     CIRCLE_CENTER_X: float = CIRCLE_BBOX_UL_X + (CIRCLE_DIAMETER / 2)  # 3.648"
@@ -66,13 +71,14 @@ class AddHoleLabel(inkex.EffectExtension):
     PAR_TEXT_OFFSET: float = 0.1  # inches below circle
     PAR_TEXT_FONT_SIZE: int = 4  # Fixed font size for par text in points
 
-    # Tee box yardage positioning (bottom right corner of top area)
+    # Tee box yardage positioning (anchored to lower right of top area)
+    # Lower right corner: (0.257 + 3.736, 0.247 + 6.756) = (3.993", 7.003")
     # Three-element layout: name (right-aligned) : yardage (left-aligned)
-    TEE_YARDAGE_COLON_X: float = 3.5  # inches - alignment pivot point (colon position)
-    TEE_YARDAGE_Y: float = 3.2  # inches - bottom area
+    TEE_YARDAGE_ANCHOR_X: float = 3.993 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from right edge = 3.901"
+    TEE_YARDAGE_ANCHOR_Y: float = 7.003 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from bottom = 6.911"
     TEE_YARDAGE_FONT_SIZE: int = 5  # points
-    TEE_YARDAGE_COLON_SPACING: float = 0.05  # inches - space after colon before yardage
-    TEE_YARDAGE_LINE_SPACING: float = 1.6  # Multiplier for line height (reduced from 2.0)
+    TEE_YARDAGE_ELEMENT_SPACING: float = 5.0  # user units - horizontal space between name, colon, yardage
+    TEE_YARDAGE_LINE_SPACING: float = 5.0  # user units - vertical space between tee lines
 
     def add_arguments(self, pars: argparse.ArgumentParser) -> None:
         """Add command-line arguments."""
@@ -105,6 +111,11 @@ class AddHoleLabel(inkex.EffectExtension):
                          help="Tee box 6 name")
         pars.add_argument("--tee6_yardage", type=int, default=0,
                          help="Tee box 6 yardage")
+        # Spacing options
+        pars.add_argument("--element_spacing", type=int, default=5,
+                         help="Horizontal spacing between elements (user units/px)")
+        pars.add_argument("--line_spacing", type=int, default=5,
+                         help="Vertical spacing between tee lines (user units/px)")
         pars.add_argument("--font_size", type=int, default=6,
                          help="Font size in points")
         pars.add_argument("--font_weight", type=str, default="bold",
@@ -429,17 +440,21 @@ class AddHoleLabel(inkex.EffectExtension):
 
     def _create_tee_yardages(self, hole_num: int) -> Optional[Group]:
         """
-        Create tee box yardage display with three-element formatting.
+        Create tee box yardage display with three-element formatting and bottom-up positioning.
 
-        Each line displays: "TeeNam : 325" using three separate text elements:
+        Uses font-based calculations for reliable spacing. Text element bounding boxes are
+        unreliable until after layout/rendering, so dimensions are calculated from font metrics.
+
+        Each line displays: "TeeName : 325" using three separate text elements:
         1. Tee name (right-aligned before colon)
-        2. Colon (centered at fixed alignment point)
+        2. Colon (left-aligned at pivot point, ~40% of font size width)
         3. Yardage (left-aligned after colon with spacing)
 
-        This approach ensures:
-        - All colons vertically aligned at same X position
-        - Tee names of varying length align properly
-        - Yardages have consistent left margin
+        Positioning strategy:
+        - Anchor to lower right corner of top area bounding box (with margin)
+        - Calculate colon width as 40% of font size (reliable for proportional fonts)
+        - Start with bottom-most tee (last in list)
+        - Position subsequent tees upward using user-configurable line spacing
 
         Args:
             hole_num: Hole number (1-18) for unique group ID
@@ -450,10 +465,10 @@ class AddHoleLabel(inkex.EffectExtension):
         # Collect tee boxes with non-zero yardages
         tees: list[tuple[str, int]] = []
         for i in range(1, 7):  # 6 tee boxes
-            name = getattr(self.options, f'tee{i}_name', '')
-            yardage = getattr(self.options, f'tee{i}_yardage', 0)
+            name: str = getattr(self.options, f'tee{i}_name', '')
+            yardage: int = getattr(self.options, f'tee{i}_yardage', 0)
 
-            if yardage > 0 and name.strip():  # Only include if yardage > 0 and name exists
+            if yardage > 0 and name and name.strip():  # Only include if yardage > 0 and name exists
                 tees.append((name.strip(), yardage))
 
         # Return None if no tees specified
@@ -461,65 +476,112 @@ class AddHoleLabel(inkex.EffectExtension):
             logger.info("No tee box yardages specified (all zeros)")
             return None
 
-        # Calculate line height based on font size (points to inches: 1pt = 1/72 inch)
-        # Line height = font_size * spacing_multiplier (e.g., 5pt * 1.6 = 8pt = 0.111")
-        font_size_inches = self.TEE_YARDAGE_FONT_SIZE / 72.0
-        line_height_inches = font_size_inches * self.TEE_YARDAGE_LINE_SPACING
-
-        # Convert positions to user units
+        # Convert anchor positions to user units and get user-configurable spacing
         try:
-            # Colon position (alignment pivot)
-            colon_x_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_COLON_X}in")
-            base_y_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_Y}in")
-            line_height_uu = self.svg.unittouu(f"{line_height_inches}in")
-
-            # Spacing for yardage offset
-            colon_spacing_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_COLON_SPACING}in")
-            yardage_x_uu = colon_x_uu + colon_spacing_uu
+            colon_x_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_ANCHOR_X}in")
+            base_y_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_ANCHOR_Y}in")
+            # Get spacing from user options (already in user units)
+            element_spacing_uu = float(self.options.element_spacing)
+            line_spacing_uu = float(self.options.line_spacing)
 
         except (ValueError, AttributeError) as e:
             logger.error("Failed to convert tee yardage units: %s", e)
             return None
 
-        logger.info("Tee yardage layout: colon_x=%.2f\", line_height=%.3f\" (font: %dpt, spacing: %.1fx)",
-                   self.TEE_YARDAGE_COLON_X, line_height_inches,
-                   self.TEE_YARDAGE_FONT_SIZE, self.TEE_YARDAGE_LINE_SPACING)
+        logger.info(
+            "Tee yardage layout: anchor=(%.2f\", %.2f\"), colon_x=%.2f\", font=%dpt, element_spacing=%dpx, line_spacing=%dpx",
+            self.TEE_YARDAGE_ANCHOR_X, self.TEE_YARDAGE_ANCHOR_Y,
+            self.TEE_YARDAGE_ANCHOR_X, self.TEE_YARDAGE_FONT_SIZE,
+            int(element_spacing_uu), int(line_spacing_uu)
+        )
 
-        # Create group for tee yardages
+        # Debug output for Inkscape UI
+        inkex.utils.debug(f"=== TEE YARDAGE DEBUG ===")
+        inkex.utils.debug(f"Anchor point: ({self.TEE_YARDAGE_ANCHOR_X:.2f}\", {self.TEE_YARDAGE_ANCHOR_Y:.2f}\")")
+        inkex.utils.debug(f"Anchor in user units: colon_x={colon_x_uu:.2f}px, base_y={base_y_uu:.2f}px")
+        inkex.utils.debug(f"Element spacing: {element_spacing_uu:.2f}px (horizontal)")
+        inkex.utils.debug(f"Line spacing: {line_spacing_uu:.2f}px (vertical)")
+        inkex.utils.debug(f"Processing {len(tees)} tees in reverse order (bottom-up)")
+
+        # STEP 1: Calculate colon width from font metrics
+        inkex.utils.debug(f"\n--- STEP 1: Calculating element spacing from font metrics ---")
+
+        # Text elements don't have reliable bounding box measurements until after layout/rendering.
+        # Calculate colon width from font size: for proportional fonts, colon is ~40% of font size
+        font_size_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_FONT_SIZE}pt")
+        colon_width_uu = font_size_uu * 0.4  # Approximately 2-3px for 5pt font
+
+        inkex.utils.debug(f"Font size: {self.TEE_YARDAGE_FONT_SIZE}pt = {font_size_uu:.2f}px")
+        inkex.utils.debug(f"Calculated colon width: {colon_width_uu:.2f}px (40% of font size)")
+        inkex.utils.debug(f"Using fixed line spacing: {line_spacing_uu:.2f}px")
+        logger.info("Calculated colon width: %.2fpx from font size %.2fpx", colon_width_uu, font_size_uu)
+
+        # Calculate element positions with configurable spacing
+        # Layout: [name] <element_spacing> [:] <element_spacing> [yardage]
+        name_x_uu = colon_x_uu - element_spacing_uu  # Name ends before colon
+        yardage_x_uu = colon_x_uu + colon_width_uu + element_spacing_uu  # Yardage starts after colon
+
+        inkex.utils.debug(f"\nElement positions:")
+        inkex.utils.debug(f"  Name x: {name_x_uu:.2f}px (right-aligned, {element_spacing_uu:.0f}px gap to colon)")
+        inkex.utils.debug(f"  Colon x: {colon_x_uu:.2f}px (left-aligned, {colon_width_uu:.2f}px wide)")
+        inkex.utils.debug(f"  Yardage x: {yardage_x_uu:.2f}px (left-aligned, {element_spacing_uu:.0f}px gap from colon)")
+
+        # STEP 2: Create all elements at their correct positions
+        inkex.utils.debug(f"\n--- STEP 2: Creating {len(tees)} tee lines (bottom-up positioning) ---")
+        created_elements: list[tuple[TextElement, TextElement, TextElement]] = []
+        current_y_uu = base_y_uu
+
+        # Process tees in reverse order (bottom to top)
+        # This ensures Tee 1 appears at top, Tee 6 at bottom (conventional yardage book order)
+        for idx, (name, yardage) in enumerate(reversed(tees)):
+            inkex.utils.debug(f"\n--- Tee line {idx} (from bottom): '{name}' : {yardage} ---")
+            inkex.utils.debug(f"Creating at y={current_y_uu:.2f}px")
+
+            # Create the three elements for this line with proper spacing
+            tee_name_elem = self._create_tee_text_element(
+                name, name_x_uu, current_y_uu, 'end'
+            )
+            colon_elem = self._create_tee_text_element(
+                ':', colon_x_uu, current_y_uu, 'start'
+            )
+            yardage_elem = self._create_tee_text_element(
+                str(yardage), yardage_x_uu, current_y_uu, 'start'
+            )
+
+            # Store elements for grouping (no DOM manipulation needed - using calculated dimensions)
+            created_elements.append((tee_name_elem, colon_elem, yardage_elem))
+
+            logger.debug(
+                "Tee line %d (from bottom): '%s' : %d at y=%.2f (colon_x=%.2f, yardage_x=%.2f)",
+                idx, name, yardage, current_y_uu, colon_x_uu, yardage_x_uu
+            )
+
+            # Position next line above this one
+            old_y = current_y_uu
+            current_y_uu -= line_spacing_uu
+            inkex.utils.debug(f"Next position: {old_y:.2f}px - {line_spacing_uu:.2f}px = {current_y_uu:.2f}px (moving upward)")
+
+        # Create final group and add elements to it
+        inkex.utils.debug(f"\n--- Finalizing Group ---")
+        inkex.utils.debug(f"Creating group: tee_yardages_{hole_num:02d}")
         tee_group = Group()
         tee_group.set('id', f'tee_yardages_{hole_num:02d}')
         tee_group.label = f'tee_yardages_{hole_num:02d}'
 
-        # Create three elements per line
-        for idx, (name, yardage) in enumerate(tees):
-            y_position = base_y_uu + (idx * line_height_uu)
-
-            # Element 1: Tee name (right-aligned to colon)
-            tee_name_elem = self._create_tee_text_element(
-                name, colon_x_uu, y_position, 'end'
-            )
-
-            # Element 2: Colon (left-aligned at pivot point)
-            colon_elem = self._create_tee_text_element(
-                ':', colon_x_uu, y_position, 'start'
-            )
-
-            # Element 3: Yardage (left-aligned after colon)
-            yardage_elem = self._create_tee_text_element(
-                str(yardage), yardage_x_uu, y_position, 'start'
-            )
-
-            # Add to group in reading order
+        # Add elements to group (reverse to maintain top-to-bottom order in XML)
+        inkex.utils.debug(f"Adding {len(created_elements)} lines (3 elements each) to group")
+        for tee_name_elem, colon_elem, yardage_elem in reversed(created_elements):
             tee_group.append(tee_name_elem)
             tee_group.append(colon_elem)
             tee_group.append(yardage_elem)
 
-            logger.debug(
-                "Tee line %d: '%s' : %d at y=%.2f (colon_x=%.2f, yardage_x=%.2f)",
-                idx, name, yardage, y_position, colon_x_uu, yardage_x_uu
-            )
+        inkex.utils.debug(f"✓ Complete! Created {len(tees)} tee lines with bottom-up calculated spacing")
+        inkex.utils.debug(f"=== END TEE YARDAGE DEBUG ===\n")
 
-        logger.info("Created tee yardage display with %d tees (3 elements per line)", len(tees))
+        logger.info(
+            "Created tee yardage display with %d tees (bottom-up, font-based spacing)",
+            len(tees)
+        )
         return tee_group
 
 

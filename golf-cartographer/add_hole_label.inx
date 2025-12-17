@@ -86,6 +86,15 @@
     <param name="tee6_name" type="string" gui-text="  Tee 6:">Green</param>
     <param name="tee6_yardage" type="int" min="0" max="999" gui-text="">0</param>
 
+    <param name="spacer3" type="description">────────────────────────────────</param>
+    <param name="spacing_header" type="description">Spacing Options:</param>
+
+    <!-- element_spacing: Spacing between text elements (in user units / pixels) -->
+    <param name="element_spacing" type="int" min="0" max="20" gui-text="  Element Spacing (px):                        ">5</param>
+
+    <!-- line_spacing: Spacing between tee lines (in user units / pixels) -->
+    <param name="line_spacing" type="int" min="0" max="30" gui-text="  Line Spacing (px):                               ">5</param>
+
     <!-- Effect Configuration -->
     <!-- needs-live-preview="false" means this tool doesn't update as you adjust parameters -->
     <effect needs-live-preview="false">
