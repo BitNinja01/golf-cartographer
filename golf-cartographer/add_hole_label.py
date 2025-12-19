@@ -7,10 +7,15 @@ Creates visual labels with customizable fonts and supports up to 6 tee boxes per
 
 Stage 4 - Hole Labeling:
 - Creates circle at fixed page coordinates (top-right area)
-- Adds hole number text centered in circle
-- Adds par text below circle
-- Adds tee box yardages in bottom-right corner (optional, up to 6 tees)
+- Adds hole number text centered in circle (user-configurable font size)
+- Adds par text below circle (user-configurable font size)
+- Adds tee box yardages in bottom-right corner (user-configurable font size)
 - Groups all elements with inverse transforms for consistent positioning
+
+Font Sizing and Spacing:
+- Hole number: user's font_size parameter (letter spacing: 5% for double-digit numbers)
+- Par text: user's par_font_size parameter (offset below circle: 35% of par font size)
+- Tee yardages: user's tee_font_size parameter (element spacing: 20%, line spacing: 35%, letter spacing: 5%)
 
 Pipeline Context:
 - Input: SVG with positioned holes (output from Tool #3 / Stage 3)
@@ -41,16 +46,22 @@ class AddHoleLabel(inkex.EffectExtension):
 
     This tool is designed to be run 18 times (once per hole), similar to the
     Group Hole tool. Each execution creates:
-    - Label group (nested in hole group with inverse transform):
+    - Label group (with inverse transform):
       - Circle element at fixed page coordinates (top-right)
       - Hole number text centered in the circle
       - Par text positioned below the circle
-    - Tee yardages group (added to document root):
+    - Tee yardages group (with inverse transform):
       - Tee box yardages in bottom-right corner (optional, up to 6 tees)
 
-    The labels use inverse transforms to maintain fixed positions despite being
-    nested in transformed hole groups. Tee yardages are added directly to root
-    for simpler positioning.
+    Group Structure (to avoid clip issues):
+    The tool restructures the hole groups to prevent labels from being clipped:
+    - Original: top/hole_XX (with clip applied to all children)
+    - Restructured: top/hole_XX/geo_XX (clip applies here) + tee_yardages_XX + hole_label_XX
+
+    This restructuring happens automatically on first run. The geo_XX group contains
+    the clipped geometry, while labels are siblings (not children) so they aren't clipped.
+    Both labels use inverse transforms to maintain fixed positions despite the geo_XX
+    group having rotation, scaling, and positioning transforms from Stage 3.
     """
 
     # Consistent margin from bounding box edges for all positioned elements
@@ -69,18 +80,26 @@ class AddHoleLabel(inkex.EffectExtension):
     CIRCLE_CENTER_X: float = CIRCLE_BBOX_UL_X + (CIRCLE_DIAMETER / 2)  # 3.648"
     CIRCLE_CENTER_Y: float = CIRCLE_BBOX_UL_Y + (CIRCLE_DIAMETER / 2)  # 0.592"
 
-    # Text positioning
-    PAR_TEXT_OFFSET: float = 0.1  # inches below circle
-    PAR_TEXT_FONT_SIZE: int = 4  # Fixed font size for par text in points
+    # Text positioning and sizing
+    # Font sizes are user-configurable (font_size, par_font_size, tee_font_size)
+    # Spacing is proportional to respective font sizes:
+    # - Hole number letter spacing: 5% of hole number font size
+    # - Par text offset below circle: 35% of par font size
+    # - Tee line spacing (vertical): 35% of tee font size
+    # - Tee element spacing (horizontal): 20% of tee font size
+    # - Tee letter spacing: 5% of tee font size
+    HOLE_NUMBER_LETTER_SPACING_SCALE: float = 0.05  # Letter spacing as % of hole number font size
+    PAR_TEXT_OFFSET_SCALE: float = 0.35  # Par text offset as % of par font size
+    TEE_LINE_SPACING_SCALE: float = 0.35  # Tee line spacing as % of tee font size
+    TEE_ELEMENT_SPACING_SCALE: float = 0.20  # Element spacing as % of tee font size
+    TEE_LETTER_SPACING_SCALE: float = 0.05  # Letter spacing as % of tee font size
 
     # Tee box yardage positioning (anchored to lower right of top area)
     # Lower right corner: (0.257 + 3.736, 0.247 + 6.756) = (3.993", 7.003")
-    # Three-element layout: name (right-aligned) : yardage (left-aligned)
-    TEE_YARDAGE_ANCHOR_X: float = 3.993 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from right edge = 3.901"
+    # Three-element layout: name (right-aligned) : yardage (right-aligned to boundary)
+    # TEE_YARDAGE_ANCHOR_X represents the RIGHT EDGE of the entire yardage group
+    TEE_YARDAGE_ANCHOR_X: float = 3.993 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from right edge = 3.901" (right boundary)
     TEE_YARDAGE_ANCHOR_Y: float = 7.003 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from bottom = 6.911"
-    TEE_YARDAGE_FONT_SIZE: int = 5  # points
-    TEE_YARDAGE_ELEMENT_SPACING: float = 5.0  # user units - horizontal space between name, colon, yardage
-    TEE_YARDAGE_LINE_SPACING: float = 5.0  # user units - vertical space between tee lines
 
     def add_arguments(self, pars: argparse.ArgumentParser) -> None:
         """Add command-line arguments."""
@@ -115,13 +134,13 @@ class AddHoleLabel(inkex.EffectExtension):
                          help="Tee box 6 name")
         pars.add_argument("--tee6_yardage", type=int, default=0,
                          help="Tee box 6 yardage")
-        # Spacing options
-        pars.add_argument("--element_spacing", type=int, default=5,
-                         help="Horizontal spacing between elements (user units/px)")
-        pars.add_argument("--line_spacing", type=int, default=5,
-                         help="Vertical spacing between tee lines (user units/px)")
+        # Font options
         pars.add_argument("--font_size", type=int, default=6,
-                         help="Font size in points")
+                         help="Hole number font size in points")
+        pars.add_argument("--par_font_size", type=int, default=4,
+                         help="Par text font size in points")
+        pars.add_argument("--tee_font_size", type=int, default=4,
+                         help="Tee yardage font size in points")
         pars.add_argument("--font_weight", type=str, default="bold",
                          help="Font weight (bold or normal)")
         pars.add_argument("--font_family", type=str, default="JetBrainsMono Nerd Font",
@@ -139,7 +158,7 @@ class AddHoleLabel(inkex.EffectExtension):
         5. Check for duplicate labels (remove if exists)
         6. Create label group with circle and text elements
         7. Add label group to hole group with inverse transform
-        8. Create and add tee yardages to document root (if specified)
+        8. Create and add tee yardages to hole group with inverse transform (if specified)
 
         Validation ensures Stage 3 (Auto-Place Holes) has been run before
         attempting to add labels.
@@ -198,17 +217,35 @@ class AddHoleLabel(inkex.EffectExtension):
             inkex.errormsg(f"Error: Font size must be 4-72pt, got {self.options.font_size}")
             return
 
-        # Validation: Check if hole_XX group exists
+        # Validation: Check if hole_XX or geo_XX group exists
+        # (geo_XX exists if this tool has already been run and restructured the groups)
         hole_id = f"hole_{hole_num:02d}"
-        hole_group = self._find_hole_group(root, hole_id)
+        geo_id = f"geo_{hole_num:02d}"
 
-        if hole_group is None:
-            logger.warning("Hole %d group not found. Cannot create label.", hole_num)
-            inkex.errormsg(
-                f"Error: Hole {hole_num} group not found. "
-                f"Please run Stage 3 (Auto-Place Holes) before adding labels."
-            )
-            return
+        # Check if geo_XX exists (restructuring already done)
+        geo_group = self._find_hole_group(root, geo_id)
+        already_restructured = geo_group is not None
+
+        if already_restructured:
+            # Restructuring already done - find the wrapper and geo group
+            logger.info("Hole %d already restructured - geo_%02d exists", hole_num, hole_num)
+            hole_group = geo_group  # Use geo_XX for transform calculation
+            wrapper_group = self._find_hole_group(root, hole_id)
+            if wrapper_group is None:
+                logger.error("Found geo_%02d but not hole_%02d wrapper", hole_num, hole_num)
+                inkex.errormsg(f"Error: Inconsistent structure for hole {hole_num}")
+                return
+        else:
+            # First time - find hole_XX (will be renamed to geo_XX)
+            hole_group = self._find_hole_group(root, hole_id)
+            if hole_group is None:
+                logger.warning("Hole %d group not found. Cannot create label.", hole_num)
+                inkex.errormsg(
+                    f"Error: Hole {hole_num} group not found. "
+                    f"Please run Stage 3 (Auto-Place Holes) before adding labels."
+                )
+                return
+            wrapper_group = None  # Will be created later
 
         # Remove existing label if present (prevents duplicate IDs)
         label_id = f"hole_label_{hole_num:02d}"
@@ -220,29 +257,17 @@ class AddHoleLabel(inkex.EffectExtension):
             if parent is not None:
                 parent.remove(existing_label)
 
-        # Create and add label group
+        # Create label group and tee yardages
         label_group = self._create_hole_label_group(hole_num, par)
         if label_group is None:
             logger.error("Failed to create label group for hole %d", hole_num)
             return
 
-        # Apply inverse transform so label appears at fixed position despite being nested in hole group
-        # The hole group has transforms (rotation, scaling, position) from Stage 3
-        # We need to cancel those out so the label stays at the fixed page coordinates
-        hole_transform = hole_group.composed_transform()
-        if hole_transform:
-            inverse_transform = -hole_transform
-            label_group.transform = inverse_transform
-            logger.info("Applied inverse transform to label for hole %d", hole_num)
-
-        # Add label to the hole group (not root) so it's nested properly
-        hole_group.append(label_group)
-        logger.info("Successfully added label for hole %d (par %d) to hole group", hole_num, par)
-
-        # Create and add tee yardages to root (separate from hole group)
+        # Create tee yardages group
         tee_yardages = self._create_tee_yardages(hole_num)
+
+        # Remove existing tee yardages if present
         if tee_yardages is not None:
-            # Remove existing tee yardages if present
             tee_id = f'tee_yardages_{hole_num:02d}'
             existing_tee = root.getElementById(tee_id)
             if existing_tee is not None:
@@ -251,9 +276,83 @@ class AddHoleLabel(inkex.EffectExtension):
                 if tee_parent is not None:
                     tee_parent.remove(existing_tee)
 
-            # Add tee yardages to root (no inverse transform needed)
-            root.append(tee_yardages)
-            logger.info("Successfully added tee yardages for hole %d to root", hole_num)
+        # RESTRUCTURE GROUPS TO AVOID CLIP ISSUES (only if not already done)
+        # The hole_XX group has a clip applied which clips our labels
+        # Solution: Create wrapper hierarchy: hole_XX/geo_XX (clipped) + tee_yardages_XX (not clipped)
+
+        if not already_restructured:
+            # Step 1: Find the 'top' group (parent of hole_XX)
+            top_group = hole_group.getparent()
+            if top_group is None:
+                logger.error("Cannot find 'top' group - hole_%02d has no parent", hole_num)
+                inkex.errormsg(f"Error: Hole {hole_num} group has no parent (expected 'top' group)")
+                return
+
+            # Step 2: Remember the original position in top group (for preserving outliner order)
+            original_index = list(top_group).index(hole_group)
+            logger.info("Found hole_%02d at index %d in 'top' group", hole_num, original_index)
+
+            # Step 3: Rename hole_XX to geo_XX
+            logger.info("Renaming hole_%02d to %s", hole_num, geo_id)
+            hole_group.set('id', geo_id)
+            hole_group.set('inkscape:label', geo_id)
+
+            # Step 4: Remove geo_XX from top (will be moved into wrapper)
+            top_group.remove(hole_group)
+            logger.info("Removed %s from 'top' (will add to wrapper in correct z-order)", geo_id)
+
+            # Step 5: Create new hole_XX wrapper and insert at same position
+            wrapper_group = Group()
+            wrapper_group.set('id', hole_id)
+            wrapper_group.set('inkscape:label', hole_id)
+            top_group.insert(original_index, wrapper_group)
+            logger.info("Created new %s wrapper group at index %d in 'top' (preserving outliner order)", hole_id, original_index)
+        else:
+            logger.info("Skipping restructure - hole %d already has wrapper structure", hole_num)
+
+        # Step 6: Add elements to hole_XX wrapper in correct z-order
+        #
+        # Transform logic:
+        # - Labels are created with content at absolute page coordinates (e.g., CIRCLE_CENTER_X)
+        # - wrapper_group (hole_XX) has identity transform (no rotation/scaling/position)
+        # - geo_XX (inside wrapper) has the transforms from Stage 3, but labels are NOT children of geo_XX
+        # - Since labels are children of wrapper (identity), they need NO inverse transform
+        # - Label world position = wrapper_transform * label_content = identity * P = P ✓
+        #
+        # The inverse transform is only needed when labels are children of the transformed group,
+        # but here they are siblings to the transformed group (geo_XX), both under wrapper (identity).
+        #
+        # Z-order (painting order, bottom to top):
+        # 1. geo_XX (bottom layer - geometry with clip)
+        # 2. tee_yardages (middle layer)
+        # 3. hole_label (top layer)
+        #
+        # In SVG/DOM, later elements paint on top, so append in this order:
+
+        logger.info("Adding elements to %s wrapper (identity transform) - no inverse needed", hole_id)
+
+        # Ensure correct z-order: geo_XX → tee_yardages → hole_label
+        # On subsequent runs, geo_XX is already in wrapper at the beginning
+
+        if already_restructured:
+            # geo_XX already in wrapper (at beginning) - append labels after it
+            if tee_yardages is not None:
+                wrapper_group.append(tee_yardages)
+                logger.info("Added tee_yardages_%02d after %s (middle layer)", hole_num, geo_id)
+
+            wrapper_group.append(label_group)
+            logger.info("Added hole_label_%02d after %s (top layer)", hole_num, geo_id)
+        else:
+            # First run - append in order: geo_XX → tee_yardages → hole_label
+            wrapper_group.append(hole_group)  # hole_group is geo_XX at this point
+            logger.info("Added %s to %s wrapper (bottom layer)", geo_id, hole_id)
+
+            if tee_yardages is not None:
+                wrapper_group.append(tee_yardages)
+                logger.info("Added tee_yardages_%02d to %s wrapper (middle layer)", hole_num, hole_id)
+
+            wrapper_group.append(label_group)
+            logger.info("Added hole_label_%02d to %s wrapper (top layer)", hole_num, hole_id)
 
     def _find_hole_group(self, root: inkex.SvgDocumentElement, hole_id: str) -> Optional[Group]:
         """
@@ -293,10 +392,11 @@ class AddHoleLabel(inkex.EffectExtension):
         - Hole number text centered in circle
         - Par text positioned below circle
 
-        Note: Tee box yardages are created separately and added to document root.
+        Note: Tee box yardages are created separately and added to the hole group.
 
-        All elements use the same coordinate system (document root), so they
-        appear at consistent positions across all pages when exported to PDF.
+        All elements use the same coordinate system (document root), and inverse
+        transforms ensure they appear at consistent positions across all pages
+        when exported to PDF.
 
         Args:
             hole_num: Hole number (1-18)
@@ -362,6 +462,7 @@ class AddHoleLabel(inkex.EffectExtension):
 
         Uses GlyphLibrary for accurate measurements and positioning. Calculates the
         position offset to center the text bounding box within the circle.
+        Font size is scaled to 90% of the user's font_size parameter.
 
         Args:
             hole_num: Hole number (1-18)
@@ -374,14 +475,30 @@ class AddHoleLabel(inkex.EffectExtension):
         logger.info("Creating centered hole number %d at circle center (%.2f, %.2f)",
                    hole_num, circle_cx, circle_cy)
 
+        # Use user's font_size parameter directly for hole number
+        hole_number_font_size = int(self.options.font_size)
+
+        # Add letter spacing: 5% of the font size for proper spacing between digits
+        letter_spacing = hole_number_font_size * self.HOLE_NUMBER_LETTER_SPACING_SCALE
+
+        logger.info(
+            "Hole number font: %dpt, letter_spacing: %.2fpx (5%% of font size)",
+            hole_number_font_size, letter_spacing
+        )
+
         # Compose text using glyph library to get accurate dimensions
         # Note: We'll position at (0, 0) first to get dimensions, then reposition
         text_group, width, height = self.glyph_library.compose_text(
             str(hole_num),
             x=0,
             y=0,
-            font_size=self.options.font_size,
-            spacing=0  # No extra spacing for single/double digit numbers
+            font_size=hole_number_font_size,
+            spacing=letter_spacing  # 5% spacing between digits (e.g., "1 0" for hole 10)
+        )
+
+        logger.info(
+            "Hole number '%s' composed: width=%.2fpx, height=%.2fpx",
+            str(hole_num), width, height
         )
 
         # Calculate position to center the text bounding box in the circle
@@ -391,19 +508,22 @@ class AddHoleLabel(inkex.EffectExtension):
         centered_x = circle_cx - (width / 2)
         centered_y = circle_cy + (height / 2)
 
-        logger.info("Text dimensions: %.2f × %.2f mm, centered at (%.2f, %.2f)",
-                   width, height, centered_x, centered_y)
+        logger.info(
+            "Centering in circle: circle_center=(%.2fpx, %.2fpx), text_size=(%.2fpx × %.2fpx), final_position=(%.2fpx, %.2fpx)",
+            circle_cx, circle_cy, width, height, centered_x, centered_y
+        )
 
         # Recompose at the centered position
         text_group, width, height = self.glyph_library.compose_text(
             str(hole_num),
             x=centered_x,
             y=centered_y,
-            font_size=self.options.font_size,
-            spacing=0
+            font_size=hole_number_font_size,
+            spacing=letter_spacing
         )
 
-        logger.info("Successfully created centered hole number %d with glyph library", hole_num)
+        logger.info("Successfully created centered hole number %d at %dpt",
+                   hole_num, hole_number_font_size)
 
         return text_group
 
@@ -411,8 +531,9 @@ class AddHoleLabel(inkex.EffectExtension):
         """
         Create par text positioned below circle.
 
-        Text is positioned with a small offset below the circle's bottom edge
-        and uses a fixed smaller font size for visual hierarchy.
+        Text is positioned with a proportional offset (35% of par font size) below
+        the circle's bottom edge and scaled to 65% of the user's font_size parameter
+        for visual hierarchy.
 
         Args:
             par: Par value (3-6)
@@ -423,17 +544,20 @@ class AddHoleLabel(inkex.EffectExtension):
         Returns:
             Group containing glyph paths for par text
         """
+        # Use user's par_font_size parameter directly
+        par_font_size = int(self.options.par_font_size)
+
         # First compose to get dimensions for centering
         text_group, width, height = self.glyph_library.compose_text(
             str(par),
             x=0,
             y=0,
-            font_size=self.PAR_TEXT_FONT_SIZE,
+            font_size=par_font_size,
             spacing=0
         )
 
-        # Position below circle with offset
-        offset_uu = self.svg.unittouu(f"{self.PAR_TEXT_OFFSET}in")
+        # Position below circle with proportional offset (35% of par font size)
+        offset_uu = par_font_size * self.PAR_TEXT_OFFSET_SCALE
         # Center horizontally under the circle
         text_x = cx_uu - (width / 2)
         # Position below circle bottom edge + offset (use bottom-left positioning)
@@ -444,12 +568,12 @@ class AddHoleLabel(inkex.EffectExtension):
             str(par),
             x=text_x,
             y=text_y,
-            font_size=self.PAR_TEXT_FONT_SIZE,
+            font_size=par_font_size,
             spacing=0
         )
 
-        logger.info("Created par text '%s' (%.2f × %.2f mm) at (%.2f, %.2f)",
-                   par, width, height, text_x, text_y)
+        logger.info("Created par text '%s' at %dpt (65%% of %dpt base), offset=%.2fpx (35%% of font), size=(%.2f × %.2f) at (%.2f, %.2f)",
+                   par, par_font_size, self.options.font_size, offset_uu, width, height, text_x, text_y)
 
         return text_group
 
@@ -463,6 +587,8 @@ class AddHoleLabel(inkex.EffectExtension):
         Create a glyph-based text element for tee yardage display.
 
         Uses GlyphLibrary for accurate measurements and consistent rendering.
+        Font size is scaled to 65% of the user's font_size parameter.
+        Letter spacing is set to 5% of the font size for improved readability.
 
         Args:
             text_content: The text to display
@@ -472,12 +598,18 @@ class AddHoleLabel(inkex.EffectExtension):
         Returns:
             Tuple of (text_group, width, height) with accurate measurements
         """
+        # Use user's tee_font_size parameter directly
+        tee_font_size = int(self.options.tee_font_size)
+
+        # Add letter spacing: 5% of the font size for better readability
+        letter_spacing = tee_font_size * self.TEE_LETTER_SPACING_SCALE
+
         text_group, width, height = self.glyph_library.compose_text(
             text_content,
             x=x_uu,
             y=y_uu,
-            font_size=self.TEE_YARDAGE_FONT_SIZE,
-            spacing=0
+            font_size=tee_font_size,
+            spacing=letter_spacing
         )
 
         return text_group, width, height
@@ -491,13 +623,15 @@ class AddHoleLabel(inkex.EffectExtension):
 
         Each line displays: "TeeName : 325" using three separate glyph groups:
         1. Tee name (right-aligned before colon using actual width)
-        2. Colon (positioned at pivot point with measured width)
-        3. Yardage (left-aligned after colon with spacing)
+        2. Colon (positioned with measured width)
+        3. Yardage (right-aligned to boundary - each yardage aligns independently)
 
         Positioning strategy:
         - Anchor to lower right corner of top area bounding box (with margin)
-        - Measure actual colon width from glyph library (not approximated)
-        - Measure each tee name width for precise right-alignment
+        - Measure widest yardage to determine layout
+        - Calculate positions working BACKWARDS from right boundary
+        - Each yardage number is individually right-aligned (ensuring alignment regardless of width)
+        - Measure actual colon width and tee name widths from glyph library
         - Start with bottom-most tee (last in list)
         - Position subsequent tees upward using user-configurable line spacing
 
@@ -521,74 +655,73 @@ class AddHoleLabel(inkex.EffectExtension):
             logger.info("No tee box yardages specified (all zeros)")
             return None
 
-        # Convert anchor positions to user units and get user-configurable spacing
+        # Convert anchor positions to user units
         try:
             colon_x_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_ANCHOR_X}in")
             base_y_uu = self.svg.unittouu(f"{self.TEE_YARDAGE_ANCHOR_Y}in")
-            # Get spacing from user options (already in user units)
-            element_spacing_uu = float(self.options.element_spacing)
-            line_spacing_uu = float(self.options.line_spacing)
 
         except (ValueError, AttributeError) as e:
             logger.error("Failed to convert tee yardage units: %s", e)
             return None
 
+        # Use user's tee_font_size parameter directly
+        tee_font_size = int(self.options.tee_font_size)
+
+        # Calculate proportional spacing as % of tee yardage font size
+        element_spacing_uu = tee_font_size * self.TEE_ELEMENT_SPACING_SCALE  # 20% of tee font
+        line_spacing_uu = tee_font_size * self.TEE_LINE_SPACING_SCALE  # 35% of tee font
+
         logger.info(
-            "Tee yardage layout: anchor=(%.2f\", %.2f\"), colon_x=%.2f\", font=%dpt, element_spacing=%dpx, line_spacing=%dpx",
+            "Tee yardage layout: anchor=(%.2f\", %.2f\"), font=%dpt, element_spacing=%.2fpx (20%% of font), line_spacing=%.2fpx (35%% of font)",
             self.TEE_YARDAGE_ANCHOR_X, self.TEE_YARDAGE_ANCHOR_Y,
-            self.TEE_YARDAGE_ANCHOR_X, self.TEE_YARDAGE_FONT_SIZE,
-            int(element_spacing_uu), int(line_spacing_uu)
+            tee_font_size,
+            element_spacing_uu, line_spacing_uu
         )
 
-        # Debug output for Inkscape UI
-        inkex.utils.debug(f"=== TEE YARDAGE DEBUG (GLYPH LIBRARY) ===")
-        inkex.utils.debug(f"Anchor point: ({self.TEE_YARDAGE_ANCHOR_X:.2f}\", {self.TEE_YARDAGE_ANCHOR_Y:.2f}\")")
-        inkex.utils.debug(f"Anchor in user units: colon_x={colon_x_uu:.2f}px, base_y={base_y_uu:.2f}px")
-        inkex.utils.debug(f"Element spacing: {element_spacing_uu:.2f}px (horizontal)")
-        inkex.utils.debug(f"Line spacing: {line_spacing_uu:.2f}px (vertical)")
-        inkex.utils.debug(f"Processing {len(tees)} tees in reverse order (bottom-up)")
-
-        # STEP 1: Measure actual colon width using glyph library
-        inkex.utils.debug(f"\n--- STEP 1: Measuring colon width with glyph library ---")
+        # STEP 1: Measure actual colon width and find widest yardage using glyph library
 
         # Get actual colon width from glyph library (no approximations!)
         _, colon_width_uu, colon_height_uu = self._create_tee_text_element(
             ':', 0, 0
         )
 
-        inkex.utils.debug(f"Font size: {self.TEE_YARDAGE_FONT_SIZE}pt")
-        inkex.utils.debug(f"Measured colon width: {colon_width_uu:.2f}px (actual, not estimated)")
-        inkex.utils.debug(f"Using line spacing: {line_spacing_uu:.2f}px")
-        logger.info("Measured colon width: %.2fpx (actual measurement)", colon_width_uu)
+        logger.info("Measured colon width: %.2fpx (actual measurement at %dpt)", colon_width_uu, tee_font_size)
 
-        # Calculate yardage position (colon position is anchor, yardage starts after)
+        # Find the widest yardage to determine right edge alignment
+        max_yardage_width_uu = 0.0
+        for _, yardage in tees:
+            _, yardage_width_uu, _ = self._create_tee_text_element(str(yardage), 0, 0)
+            max_yardage_width_uu = max(max_yardage_width_uu, yardage_width_uu)
+
+        logger.info("Widest yardage: %.2fpx", max_yardage_width_uu)
+
+        # Calculate positions by working BACKWARDS from the anchor point (right edge)
+        # The anchor point (colon_x_uu from constants) represents the RIGHT EDGE of the group
         # Layout: [name] <element_spacing> [:] <element_spacing> [yardage]
-        # Note: Name position will be calculated per-line based on actual name width
-        yardage_x_uu = colon_x_uu + colon_width_uu + element_spacing_uu  # Yardage starts after colon
-
-        inkex.utils.debug(f"\nFixed element positions:")
-        inkex.utils.debug(f"  Colon x: {colon_x_uu:.2f}px (anchor point, {colon_width_uu:.2f}px wide)")
-        inkex.utils.debug(f"  Yardage x: {yardage_x_uu:.2f}px (left-aligned, {element_spacing_uu:.0f}px gap from colon)")
+        # We want: right edge of yardage = anchor point
+        right_edge_uu = colon_x_uu  # This is actually the right boundary (3.901")
+        yardage_x_uu = right_edge_uu - max_yardage_width_uu  # Yardage right-aligns to boundary
+        colon_x_uu = yardage_x_uu - element_spacing_uu - colon_width_uu  # Colon before yardage
 
         # STEP 2: Create all elements at their correct positions with accurate measurements
-        inkex.utils.debug(f"\n--- STEP 2: Creating {len(tees)} tee lines (bottom-up positioning) ---")
         created_elements: list[tuple[Group, Group, Group]] = []
         current_y_uu = base_y_uu
 
         # Process tees in reverse order (bottom to top)
         # This ensures Tee 1 appears at top, Tee 6 at bottom (conventional yardage book order)
         for idx, (name, yardage) in enumerate(reversed(tees)):
-            inkex.utils.debug(f"\n--- Tee line {idx} (from bottom): '{name}' : {yardage} ---")
-            inkex.utils.debug(f"Creating at y={current_y_uu:.2f}px")
-
             # Measure name width to calculate right-aligned position
             _, name_width_uu, _ = self._create_tee_text_element(name, 0, 0)
 
             # Position name so its right edge is at (colon_x - spacing)
             name_x_uu = colon_x_uu - element_spacing_uu - name_width_uu
 
-            inkex.utils.debug(f"  Name '{name}' width: {name_width_uu:.2f}px")
-            inkex.utils.debug(f"  Name x: {name_x_uu:.2f}px (right-aligned with {element_spacing_uu:.0f}px gap to colon)")
+            # Measure THIS yardage's width to calculate right-aligned position
+            _, this_yardage_width_uu, _ = self._create_tee_text_element(str(yardage), 0, 0)
+
+            # Position yardage so its right edge aligns with the right boundary
+            # This ensures all yardages are right-aligned regardless of their width
+            this_yardage_x_uu = right_edge_uu - this_yardage_width_uu
 
             # Create the three elements for this line with measured positions
             tee_name_elem, _, _ = self._create_tee_text_element(
@@ -598,7 +731,7 @@ class AddHoleLabel(inkex.EffectExtension):
                 ':', colon_x_uu, current_y_uu
             )
             yardage_elem, _, _ = self._create_tee_text_element(
-                str(yardage), yardage_x_uu, current_y_uu
+                str(yardage), this_yardage_x_uu, current_y_uu
             )
 
             # Store elements for grouping
@@ -606,30 +739,22 @@ class AddHoleLabel(inkex.EffectExtension):
 
             logger.debug(
                 "Tee line %d (from bottom): '%s' : %d at y=%.2f (name_x=%.2f, colon_x=%.2f, yardage_x=%.2f)",
-                idx, name, yardage, current_y_uu, name_x_uu, colon_x_uu, yardage_x_uu
+                idx, name, yardage, current_y_uu, name_x_uu, colon_x_uu, this_yardage_x_uu
             )
 
             # Position next line above this one
-            old_y = current_y_uu
             current_y_uu -= line_spacing_uu
-            inkex.utils.debug(f"Next position: {old_y:.2f}px - {line_spacing_uu:.2f}px = {current_y_uu:.2f}px (moving upward)")
 
         # Create final group and add elements to it
-        inkex.utils.debug(f"\n--- Finalizing Group ---")
-        inkex.utils.debug(f"Creating group: tee_yardages_{hole_num:02d}")
         tee_group = Group()
         tee_group.set('id', f'tee_yardages_{hole_num:02d}')
         tee_group.label = f'tee_yardages_{hole_num:02d}'
 
         # Add elements to group (reverse to maintain top-to-bottom order in XML)
-        inkex.utils.debug(f"Adding {len(created_elements)} lines (3 glyph groups each) to group")
         for tee_name_elem, colon_elem, yardage_elem in reversed(created_elements):
             tee_group.append(tee_name_elem)
             tee_group.append(colon_elem)
             tee_group.append(yardage_elem)
-
-        inkex.utils.debug(f"✓ Complete! Created {len(tees)} tee lines with glyph library (accurate measurements)")
-        inkex.utils.debug(f"=== END TEE YARDAGE DEBUG ===\n")
 
         logger.info(
             "Created tee yardage display with %d tees (bottom-up, glyph-based with accurate widths)",

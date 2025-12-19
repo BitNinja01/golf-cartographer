@@ -59,15 +59,20 @@ class GlyphLibrary:
                     # Extract character from ID (e.g., "glyph-A" -> "A")
                     char = elem_id.replace('glyph-', '', 1)
 
-                    # Handle special character names
-                    if char == 'colon':
-                        char = ':'
-                    elif char == 'period':
-                        char = '.'
-                    elif char == 'dash':
-                        char = '-'
-                    elif char == 'space':
-                        char = ' '
+                    # Handle special character names (must match prepare_glyph_library.py)
+                    special_names = {
+                        'colon': ':',
+                        'period': '.',
+                        'comma': ',',
+                        'dash': '-',
+                        'apostrophe': "'",
+                        'quote': '"',
+                        'lparen': '(',
+                        'rparen': ')',
+                        'slash': '/',
+                        'space': ' ',
+                    }
+                    char = special_names.get(char, char)
 
                     # Store the path element
                     self.glyphs[char] = element
@@ -132,7 +137,9 @@ class GlyphLibrary:
 
             glyph = self.get_glyph(char)
             if glyph is None:
-                # Character not in library - skip it
+                # Character not in library - warn and skip it
+                import inkex
+                inkex.utils.debug(f"WARNING: Character '{char}' not found in glyph library '{self.library_path}'")
                 continue
 
             # Get the glyph's bounding box (in library's coordinate system)

@@ -124,6 +124,34 @@ class PrepareGlyphLibrary(inkex.EffectExtension):
         # Resize canvas to fit content with padding
         self.resize_canvas_to_content(padding_mm=5)
 
+    def get_char_name(self, char):
+        """
+        Get the name to use for a character in glyph IDs.
+
+        Special characters use descriptive names (e.g., 'colon' for ':')
+        to create valid XML IDs. Regular alphanumeric characters use themselves.
+
+        Args:
+            char: Single character
+
+        Returns:
+            String name for use in glyph ID (e.g., 'colon', 'A', '5')
+        """
+        # Map special characters to descriptive names
+        special_chars = {
+            ':': 'colon',
+            '.': 'period',
+            ',': 'comma',
+            '-': 'dash',
+            "'": 'apostrophe',
+            '"': 'quote',
+            '(': 'lparen',
+            ')': 'rparen',
+            '/': 'slash',
+            ' ': 'space',
+        }
+        return special_chars.get(char, char)
+
     def create_character_group(self, characters, font_family, font_style, font_size_uu,
                                 start_x, start_y, spacing, group_name):
         """
@@ -173,8 +201,10 @@ class PrepareGlyphLibrary(inkex.EffectExtension):
             }
 
             # Set unique ID using glyph naming convention
-            # This makes it easy to rename to final format (glyph-X) after conversion
-            char_id = f"glyph-{char}"
+            # Special characters use descriptive names (glyph-colon, glyph-period, etc.)
+            # Regular characters use the character itself (glyph-A, glyph-0, etc.)
+            char_name = self.get_char_name(char)
+            char_id = f"glyph-{char_name}"
             text_elem.set('id', char_id)
 
             # Collect element

@@ -12,8 +12,14 @@
             <!-- Font Options -->
             <param name="font_header" type="description">Font Options:</param>
 
-            <!-- font_size: Optional font size customization for hole number text -->
-            <param name="font_size" type="int" min="4" max="72" gui-text="  Font Size (pt):                                         ">6</param>
+            <!-- font_size: Font size for hole number in circle -->
+            <param name="font_size" type="int" min="4" max="72" gui-text="  Hole Number Font Size (pt):              ">6</param>
+
+            <!-- par_font_size: Font size for par text -->
+            <param name="par_font_size" type="int" min="2" max="48" gui-text="  Par Font Size (pt):                              ">4</param>
+
+            <!-- tee_font_size: Font size for tee yardages -->
+            <param name="tee_font_size" type="int" min="2" max="48" gui-text="  Tee Yardage Font Size (pt):              ">4</param>
 
             <!-- font_weight: Font weight for hole number text -->
             <param name="font_weight" type="optiongroup" appearance="combo" gui-text="  Font Weight:">
@@ -64,15 +70,6 @@ Use "List Fonts" tab to see available fonts.</param>
             <!-- Tee Box 6 -->
             <param name="tee6_name" type="string" gui-text="  Tee 6:">Green</param>
             <param name="tee6_yardage" type="int" min="0" max="999" gui-text="">0</param>
-
-            <param name="spacer3" type="description">────────────────────────────────</param>
-            <param name="spacing_header" type="description">Spacing Options:</param>
-
-            <!-- element_spacing: Spacing between text elements (in user units / pixels) -->
-            <param name="element_spacing" type="int" min="0" max="20" gui-text="  Element Spacing (px):                        ">5</param>
-
-            <!-- line_spacing: Spacing between tee lines (in user units / pixels) -->
-            <param name="line_spacing" type="int" min="0" max="30" gui-text="  Line Spacing (px):                               ">5</param>
         </page>
 
         <page name="list_fonts" gui-text="List Fonts">
