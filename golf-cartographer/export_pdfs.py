@@ -65,6 +65,7 @@ class ExportPDFs(inkex.EffectExtension):
         self.cover_group = validation_result["cover"]
         self.back_group = validation_result["back"]
         self.yardage_chart_group = validation_result["yardage_chart"]
+        self.greens_guide_group = validation_result["greens_guide"]
 
         # Detect Inkscape CLI path
         inkscape_path = self._find_inkscape_cli()
@@ -163,47 +164,87 @@ class ExportPDFs(inkex.EffectExtension):
             dict: Contains 'valid' (bool), 'error' (str), and group references
         """
         root = self.document.getroot()
-        required_groups = {
+
+        # First find top and bottom groups at root level
+        root_groups = {
             "top": None,
-            "bottom": None,
+            "bottom": None
+        }
+
+        for element in root:
+            if isinstance(element, inkex.Group):
+                label = element.label
+                if label in root_groups:
+                    root_groups[label] = element
+
+        # Check for missing root groups
+        missing_root = [name for name, group in root_groups.items() if group is None]
+        if missing_root:
+            error_msg = "Missing required root groups:\n"
+            for name in missing_root:
+                error_msg += f"  - {name}/\n"
+            return {"valid": False, "error": error_msg}
+
+        # Now search for special groups inside top and bottom
+        special_groups = {
             "notes": None,
             "cover": None,
             "back": None,
             "yardage_chart": None
         }
 
-        # Find all required groups
-        for element in root:
-            if isinstance(element, inkex.Group):
-                label = element.label
-                if label in required_groups:
-                    required_groups[label] = element
+        # Also find greens_guide (optional, in bottom group)
+        greens_guide = None
 
-        # Check for missing groups
-        missing_groups = [name for name, group in required_groups.items() if group is None]
-        if missing_groups:
-            error_msg = "Missing required groups:\n"
-            for name in missing_groups:
+        # Search in both top and bottom groups
+        for parent_group in [root_groups["top"], root_groups["bottom"]]:
+            for child in parent_group:
+                if isinstance(child, inkex.Group):
+                    label = child.label
+                    if label in special_groups and special_groups[label] is None:
+                        special_groups[label] = child
+                    elif label == "greens_guide":
+                        greens_guide = child
+
+        # Check for missing special groups
+        missing_special = [name for name, group in special_groups.items() if group is None]
+        if missing_special:
+            error_msg = "Missing required groups (should be inside top/ or bottom/):\n"
+            for name in missing_special:
                 error_msg += f"  - {name}/\n"
             return {"valid": False, "error": error_msg}
 
-        # Validate top and bottom groups have 18 hole_XX children
-        for group_name in ["top", "bottom"]:
-            group = required_groups[group_name]
-            hole_count = 0
-            for child in group:
-                if isinstance(child, inkex.Group) and child.label and child.label.startswith("hole_"):
-                    hole_count += 1
+        # Validate top group has 18 hole_XX children
+        top_group = root_groups["top"]
+        hole_count = 0
+        for child in top_group:
+            if isinstance(child, inkex.Group) and child.label and child.label.startswith("hole_"):
+                hole_count += 1
 
-            if hole_count < 18:
-                return {
-                    "valid": False,
-                    "error": f"Group '{group_name}/' should contain 18 hole_XX children (found {hole_count})"
-                }
+        if hole_count < 18:
+            return {
+                "valid": False,
+                "error": f"Group 'top/' should contain 18 hole_XX children (found {hole_count})"
+            }
+
+        # Validate bottom group has 18 green_XX_bottom children
+        bottom_group = root_groups["bottom"]
+        green_count = 0
+        for child in bottom_group:
+            if child.label and child.label.startswith("green_") and child.label.endswith("_bottom"):
+                green_count += 1
+
+        if green_count < 18:
+            return {
+                "valid": False,
+                "error": f"Group 'bottom/' should contain 18 green_XX_bottom children (found {green_count})"
+            }
 
         # All validation passed
         result = {"valid": True, "error": None}
-        result.update(required_groups)
+        result.update(root_groups)
+        result.update(special_groups)
+        result["greens_guide"] = greens_guide
         return result
 
     def _find_inkscape_cli(self):
@@ -338,7 +379,7 @@ class ExportPDFs(inkex.EffectExtension):
         # First pass: hide everything to ensure clean slate
         # This prevents accidentally showing multiple holes in the same PDF
         self._hide_all_holes(self.top_group)
-        self._hide_all_holes(self.bottom_group)
+        self._hide_all_greens(self.bottom_group)
 
         # Hide all special page groups
         self._hide_element(self.notes_group)
@@ -361,14 +402,27 @@ class ExportPDFs(inkex.EffectExtension):
 
         # Third pass: show only the specified bottom element
         if special_bottom:
-            # Show special group directly
+            # Show special group directly and hide greens_guide
             if bottom_visible == "cover":
                 self._show_element_direct(self.cover_group)
+                if self.greens_guide_group is not None:
+                    self._hide_element(self.greens_guide_group)
             elif bottom_visible == "notes":
                 self._show_element_direct(self.notes_group)
+                if self.greens_guide_group is not None:
+                    self._hide_element(self.greens_guide_group)
         else:
-            # Show hole in bottom group (hole_XX format)
-            self._show_element_in_group(self.bottom_group, bottom_visible)
+            # Convert hole_XX to green_XX_bottom format for bottom group
+            # e.g., "hole_01" -> "green_01_bottom"
+            if bottom_visible.startswith("hole_"):
+                hole_num = bottom_visible.replace("hole_", "")
+                green_label = f"green_{hole_num}_bottom"
+            else:
+                green_label = bottom_visible
+            self._show_element_in_group(self.bottom_group, green_label)
+            # Ensure greens_guide is visible for regular pages and yardage_chart
+            if self.greens_guide_group is not None:
+                self._show_element_direct(self.greens_guide_group)
 
     def _hide_all_holes(self, group):
         """
@@ -379,6 +433,17 @@ class ExportPDFs(inkex.EffectExtension):
         """
         for child in group:
             if isinstance(child, inkex.Group) and child.label and child.label.startswith("hole_"):
+                self._hide_element(child)
+
+    def _hide_all_greens(self, group):
+        """
+        Hide all green_XX_bottom children in a group.
+
+        Args:
+            group: Parent group element
+        """
+        for child in group:
+            if child.label and child.label.startswith("green_") and child.label.endswith("_bottom"):
                 self._hide_element(child)
 
     def _hide_element(self, element):
