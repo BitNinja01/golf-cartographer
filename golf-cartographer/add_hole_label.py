@@ -32,7 +32,7 @@ import logging
 from typing import Optional
 
 import inkex
-from inkex import Circle, TextElement, Tspan, Group, Style, Transform
+from inkex import Circle, Group, Rectangle, Style, TextElement, Transform, Tspan
 
 from glyph_library import GlyphLibrary
 
@@ -145,6 +145,348 @@ class AddHoleLabel(inkex.EffectExtension):
                          help="Font weight (bold or normal)")
         pars.add_argument("--font_family", type=str, default="JetBrainsMono Nerd Font",
                          help="Glyph library font name (without .svg extension)")
+
+    def _generate_terrain_mask(self, hole_num: int, wrapper_group: Group, geo_group: Group) -> None:
+        """
+        Generate white mask for right third of top area, inserted inside geo_XX.
+
+        Creates a white rectangle covering the right third of the TOP bounding box,
+        inserted between 'other' and 'bunkers' groups inside geo_XX. The mask uses
+        an inverse transform to appear at the correct page position despite geo_XX's
+        rotation/scale/translation.
+
+        Algorithm:
+        1. Check/reorder geo_XX children to ensure: other → bunkers → fairways → green_XX → yardage_lines
+        2. Create white rectangle (right third of TOP area) in page coordinates
+        3. Apply inverse of geo_transform so mask appears correctly
+        4. Insert mask between 'other' and 'bunkers' inside geo_XX
+        5. Create clip-path to exclude mask area from yardage lines
+
+        Args:
+            hole_num: Hole number (1-18)
+            wrapper_group: The hole_XX wrapper group (has identity transform)
+            geo_group: The geo_XX group containing terrain (has transforms from Stage 3)
+
+        Side Effects:
+            - May reorder children in geo_group
+            - Inserts mask element in geo_group
+        """
+        # Remove existing mask if present
+        mask_id = f'terrain_mask_{hole_num:02d}'
+        existing_mask = None
+        for child in list(geo_group):
+            if child.get('id') == mask_id:
+                existing_mask = child
+                break
+        if existing_mask is not None:
+            geo_group.remove(existing_mask)
+            logger.info(f"Removed existing terrain mask for hole {hole_num}")
+
+        # ===== STEP 1: Check and reorder geo_XX children =====
+        # Expected order (bottom to top): other → bunkers → fairways → green_XX
+        self._ensure_geo_child_order(geo_group, hole_num)
+
+        # ===== STEP 2: Create BOTH rectangles (left 2/3 and right 1/3 of TOP area) =====
+        # TOP BOUNDING_BOX: x=0.257", y=0.247", w=3.736", h=6.756"
+        top_x = 0.257
+        top_y = 0.247
+        top_width = 3.736
+        top_height = 6.756
+
+        # LEFT 2/3 calculation (for clip-path):
+        left_two_thirds_x = top_x  # 0.257"
+        left_two_thirds_y = top_y  # 0.247"
+        left_two_thirds_width = top_width * 2.0 / 3.0  # 2.491"
+        left_two_thirds_height = top_height  # 6.756"
+
+        # RIGHT 1/3 calculation (for visual white mask):
+        right_third_x = top_x + left_two_thirds_width  # 2.748"
+        right_third_y = top_y  # 0.247"
+        right_third_width = top_width / 3.0  # 1.245"
+        right_third_height = top_height  # 6.756"
+
+        # Convert to user units (page coordinates)
+        left_x_uu = self.svg.unittouu(f"{left_two_thirds_x}in")
+        left_y_uu = self.svg.unittouu(f"{left_two_thirds_y}in")
+        left_w_uu = self.svg.unittouu(f"{left_two_thirds_width}in")
+        left_h_uu = self.svg.unittouu(f"{left_two_thirds_height}in")
+
+        right_x_uu = self.svg.unittouu(f"{right_third_x}in")
+        right_y_uu = self.svg.unittouu(f"{right_third_y}in")
+        right_w_uu = self.svg.unittouu(f"{right_third_width}in")
+        right_h_uu = self.svg.unittouu(f"{right_third_height}in")
+
+        # Create right 1/3 white mask rectangle
+        mask = Rectangle()
+        mask.set('id', mask_id)
+        mask.set('x', str(right_x_uu))
+        mask.set('y', str(right_y_uu))
+        mask.set('width', str(right_w_uu))
+        mask.set('height', str(right_h_uu))
+        mask.style = Style({'fill': '#ffffff', 'stroke': 'none'})
+
+        # ===== STEP 3: Apply inverse transform to mask =====
+        # Mask is a child of geo_group, so it needs inverse transform
+        # to appear at the correct page coordinates despite geo_group's transforms.
+        geo_transform = geo_group.transform or Transform()
+        if geo_transform:
+            inverse_transform = -geo_transform  # inkex Transform supports negation for inverse
+            mask.transform = inverse_transform
+
+        # ===== STEP 4: Insert mask at appropriate z-order position =====
+        # terrain_mask (white, right 1/3): between 'other' and 'bunkers' to cover terrain
+
+        # Remove any existing clip rectangle from previous runs (cleanup)
+        clip_rect_id = f'clip_rect_{hole_num:02d}'
+        for child in list(geo_group):
+            if child.get('id') == clip_rect_id:
+                geo_group.remove(child)
+                logger.info(f"Removed obsolete clip rectangle for hole {hole_num}")
+                break
+
+        # Find insertion points
+        bunkers_index = None
+        last_yardage_index = None
+        for idx, child in enumerate(geo_group):
+            if isinstance(child, Group):
+                label = child.label
+                if label:
+                    if label.lower() == 'bunkers':
+                        bunkers_index = idx
+                    elif 'yardage' in label.lower():
+                        last_yardage_index = idx  # Track the last yardage group
+
+        # Insert terrain_mask (white) between 'other' and 'bunkers'
+        if bunkers_index is not None:
+            geo_group.insert(bunkers_index, mask)
+            logger.info(f"Inserted terrain mask for hole {hole_num} before bunkers (index {bunkers_index})")
+            # Adjust last_yardage_index since we inserted before it
+            if last_yardage_index is not None and last_yardage_index >= bunkers_index:
+                last_yardage_index += 1
+        else:
+            # No bunkers group - find 'other' and insert after it
+            other_index = None
+            for idx, child in enumerate(geo_group):
+                if isinstance(child, Group):
+                    label = child.label
+                    if label and label.lower() == 'other':
+                        other_index = idx
+                        break
+
+            if other_index is not None:
+                geo_group.insert(other_index + 1, mask)
+                logger.info(f"Inserted terrain mask for hole {hole_num} after other (index {other_index + 1})")
+                # Adjust last_yardage_index
+                if last_yardage_index is not None and last_yardage_index > other_index:
+                    last_yardage_index += 1
+            else:
+                geo_group.insert(0, mask)
+                logger.info(f"Inserted terrain mask for hole {hole_num} at beginning")
+                if last_yardage_index is not None:
+                    last_yardage_index += 1
+
+        logger.info(f"Successfully generated terrain mask for hole {hole_num}")
+
+        # ===== STEP 5: Create clip-path with pre-transformed coordinates =====
+        # The clipPath is in <defs> at document root. When referenced by yardage_group
+        # (inside geo_group) with userSpaceOnUse, the clip coordinates are interpreted
+        # in the FULL TRANSFORM CHAIN from page root to yardage_group.
+        #
+        # KEY INSIGHT: We must use composed_transform() to get the complete transform
+        # chain, not just geo_group.transform. There may be transforms on ancestors
+        # (top, hole_XX) or on yardage_group itself.
+        #
+        # To clip at page rectangle P:
+        #   1. Page corners are known: (left_x, left_y), etc.
+        #   2. Get full_transform = composed_transform() of yardage_group
+        #   3. Local corners = inverse(full_transform).apply_to_point(page_corner)
+        #   4. Create path with explicit local corner coordinates (NO transform attr)
+        from inkex import Defs, ClipPath, PathElement
+
+        # Find yardage line groups in geo_XX
+        yardage_groups = []
+        for child in geo_group:
+            if isinstance(child, Group):
+                label = child.label
+                if label and 'yardage' in label.lower():
+                    yardage_groups.append(child)
+
+        if yardage_groups:
+            # Get or create defs section
+            root = self.document.getroot()
+            defs = root.find('.//{http://www.w3.org/2000/svg}defs')
+            if defs is None:
+                defs = Defs()
+                root.insert(0, defs)
+
+            # Create clip-path element
+            clip_id = f'yardage_clip_{hole_num:02d}'
+
+            # Remove existing clip-path if present
+            existing_clip = root.find(f'.//{{{inkex.NSS["svg"]}}}clipPath[@id="{clip_id}"]')
+            if existing_clip is not None:
+                existing_clip.getparent().remove(existing_clip)
+
+            clip_path_elem = ClipPath()
+            clip_path_elem.set('id', clip_id)
+
+            # Define page corners of the clip rectangle (left 2/3 of top area)
+            page_corners = [
+                (left_x_uu, left_y_uu),                          # top-left
+                (left_x_uu + left_w_uu, left_y_uu),              # top-right
+                (left_x_uu + left_w_uu, left_y_uu + left_h_uu),  # bottom-right
+                (left_x_uu, left_y_uu + left_h_uu),              # bottom-left
+            ]
+
+            # Use the FIRST yardage group to get the full transform chain
+            # (all yardage groups should have the same transform chain since they're
+            # siblings inside geo_group)
+            target_yardage_group = yardage_groups[0]
+
+            # Get the COMPLETE transform chain from page root to yardage_group
+            # This includes any transforms on: top → hole_XX → geo_XX → yardage_group
+            full_transform = target_yardage_group.composed_transform()
+            full_inverse = -full_transform  # inkex Transform supports negation for inverse
+
+            # Transform page corners to local coordinate system using FULL inverse
+            # Local = full_inverse(Page)
+            # When full_transform is applied to local, we get back to page coords
+            local_corners = []
+            for px, py in page_corners:
+                lx, ly = full_inverse.apply_to_point((px, py))
+                local_corners.append((lx, ly))
+
+            # Create path with local corner coordinates
+            # M = moveto, L = lineto, Z = close path
+            path_d = f"M {local_corners[0][0]},{local_corners[0][1]} "
+            path_d += f"L {local_corners[1][0]},{local_corners[1][1]} "
+            path_d += f"L {local_corners[2][0]},{local_corners[2][1]} "
+            path_d += f"L {local_corners[3][0]},{local_corners[3][1]} Z"
+
+            clip_path = PathElement()
+            clip_path.set('d', path_d)
+            # NO transform attribute - coordinates are already in local space
+            clip_path_elem.append(clip_path)
+
+            defs.append(clip_path_elem)
+
+            # Apply clip-path to each yardage line group
+            for yg in yardage_groups:
+                yg.set('clip-path', f'url(#{clip_id})')
+
+            logger.info(f"Applied clip-path to {len(yardage_groups)} yardage line group(s)")
+
+    def _ensure_geo_child_order(self, geo_group: Group, hole_num: int) -> None:
+        """
+        Ensure geo_XX children are in correct z-order: other → bunkers → fairways → green_XX → yardage_lines.
+
+        If children are out of order (e.g., from older Stage 2 output), this method
+        reorders them to match the expected order. Also handles migration of yardage
+        lines from inside 'other' group (old Stage 2) to above green_XX (new Stage 2).
+
+        Args:
+            geo_group: The geo_XX group to check/reorder
+            hole_num: Hole number for logging
+        """
+        # Collect children by type
+        other_group = None
+        bunkers_group = None
+        fairways_group = None
+        green_elements = []
+        yardage_elements = []  # Yardage line groups (should be above green_XX)
+        other_elements = []  # Elements that don't match known categories
+
+        for child in list(geo_group):
+            if isinstance(child, Group):
+                # Use .label property for consistency with Stage 2
+                label = child.label
+                if label:
+                    label_lower = label.lower()
+                    if label_lower == 'other':
+                        other_group = child
+                    elif label_lower == 'bunkers':
+                        bunkers_group = child
+                    elif label_lower == 'fairways':
+                        fairways_group = child
+                    elif 'yardage' in label_lower:
+                        # Yardage line group detected (should be above green_XX)
+                        yardage_elements.append(child)
+                    else:
+                        other_elements.append(child)
+                else:
+                    other_elements.append(child)
+            else:
+                # Check if it's a green element
+                child_id = child.get('id') or ''
+                if child_id.startswith(f'green_{hole_num:02d}'):
+                    green_elements.append(child)
+                else:
+                    other_elements.append(child)
+
+        # MIGRATION LOGIC: Extract yardage lines from 'other' group if present (old Stage 2)
+        # In old Stage 2, yardage lines were placed inside the 'other' group
+        # In new Stage 2, they should be siblings to green_XX (above it in z-order)
+        if other_group is not None:
+            yardage_children_to_migrate = []
+            for child in list(other_group):
+                if isinstance(child, Group):
+                    child_label = child.label
+                    if child_label and 'yardage' in child_label.lower():
+                        # Found yardage lines inside 'other' group - need to migrate
+                        yardage_children_to_migrate.append(child)
+                        logger.info(f"Found yardage lines inside 'other' group (old Stage 2 structure) - will migrate to above green_XX")
+
+            # Remove yardage lines from 'other' group and add to yardage_elements
+            for yardage_child in yardage_children_to_migrate:
+                other_group.remove(yardage_child)
+                yardage_elements.append(yardage_child)
+                logger.info(f"Migrated yardage lines from 'other' group to above green_XX (new Stage 2 structure)")
+
+        # Check if reordering is needed by comparing current order to expected
+        current_order = list(geo_group)
+        expected_order = []
+
+        # Expected z-order (bottom to top): other → bunkers → fairways → green_XX → yardage_lines → other_elements
+        if other_group is not None:
+            expected_order.append(other_group)
+        if bunkers_group is not None:
+            expected_order.append(bunkers_group)
+        if fairways_group is not None:
+            expected_order.append(fairways_group)
+        expected_order.extend(green_elements)
+        expected_order.extend(yardage_elements)  # Yardage lines above green_XX
+        expected_order.extend(other_elements)
+
+        # Compare - only reorder if different
+        needs_reorder = False
+        if len(current_order) == len(expected_order):
+            for curr, exp in zip(current_order, expected_order):
+                if curr is not exp:
+                    needs_reorder = True
+                    break
+        else:
+            needs_reorder = True
+
+        if needs_reorder:
+            # Remove all children
+            for child in list(geo_group):
+                geo_group.remove(child)
+
+            # Re-add in correct order (bottom to top z-order)
+            if other_group is not None:
+                geo_group.append(other_group)
+            if bunkers_group is not None:
+                geo_group.append(bunkers_group)
+            if fairways_group is not None:
+                geo_group.append(fairways_group)
+            for elem in green_elements:
+                geo_group.append(elem)
+            for elem in yardage_elements:
+                geo_group.append(elem)  # Yardage lines above green_XX
+            for elem in other_elements:
+                geo_group.append(elem)
+
+            logger.info(f"Reordered geo_{hole_num:02d} children to correct z-order")
 
     def effect(self) -> None:
         """
@@ -353,6 +695,14 @@ class AddHoleLabel(inkex.EffectExtension):
 
             wrapper_group.append(label_group)
             logger.info("Added hole_label_%02d to %s wrapper (top layer)", hole_num, hole_id)
+
+        # ==== Generate terrain mask (white box with terrain cut out) ====
+        # This prevents terrain features in right third from interfering with labels
+        # Note: hole_group is geo_XX (renamed earlier in the method)
+        try:
+            self._generate_terrain_mask(hole_num, wrapper_group, hole_group)
+        except Exception as e:
+            logger.warning(f"Could not generate terrain mask for hole {hole_num}: {e}")
 
     def _find_hole_group(self, root: inkex.SvgDocumentElement, hole_id: str) -> Optional[Group]:
         """

@@ -5,10 +5,11 @@ Group Hole Tool - Stage 2 of Golf Yardage Book Extension Suite
 This extension organizes selected elements into hierarchical hole groups with
 color-based categorization. Creates:
   hole_XX/
-    ├── (green elements directly at top level - #87debd)
-    ├── fairways/ (fairway elements #ccebb0)
+    ├── other/ (uncategorized elements, terrain features)
     ├── bunkers/ (bunker elements #f5e8c5)
-    └── other/ (yardage lines and uncategorized elements)
+    ├── fairways/ (fairway elements #ccebb0)
+    ├── green_XX (green elements directly at top level - #87debd)
+    └── (yardage lines positioned above green)
 
 Duplicates yardage line templates (assumes original is hidden), makes the clone
 visible, and positions them at the center of each green.
@@ -64,10 +65,11 @@ class GroupHole(inkex.EffectExtension):
         1. Validate that elements are selected (user error if not)
         2. Analyze selected elements and categorize by color (reusing flatten_svg logic)
         3. Create hierarchical hole_XX group with:
-           - Green elements directly at top level with ID green_XX (for later positioning)
-           - fairways/ subgroup (fairway elements #ccebb0)
+           - other/ subgroup (uncategorized elements and root 'other' group copy)
            - bunkers/ subgroup (bunker elements #f5e8c5 - flat structure)
-           - other/ subgroup (yardage lines, uncategorized elements, and root 'other' group copy)
+           - fairways/ subgroup (fairway elements #ccebb0)
+           - Green elements directly at top level with ID green_XX (for later positioning)
+           - Yardage lines positioned above green elements (top layer)
         4. Duplicate yardage line template (assumes template is hidden in document)
         5. Make cloned yardage lines visible (sets display:inline and visibility:visible)
         6. Calculate geometric centroid of green elements
@@ -140,6 +142,7 @@ class GroupHole(inkex.EffectExtension):
             bunkers_group.append(element)
 
         # Handle yardage lines (template duplication and positioning)
+        yardage_clone = None  # Will be set if yardage template is found
         yardage_template = self._find_yardage_template()
         if yardage_template is not None:
             # Clone yardage template group (assumes original is hidden in SVG)
@@ -179,8 +182,8 @@ class GroupHole(inkex.EffectExtension):
                     # (assumes template was originally at 0,0)
                     yardage_clone.transform = Transform(translate=centroid) @ yardage_clone.transform
 
-            # Add cloned yardage lines to the 'other' group
-            other_group.append(yardage_clone)
+            # Yardage lines will be added to hole_group above green elements (not to other_group)
+            # This is done later after green elements are added
 
         # Add uncategorized elements to other group
         for element in other_elements:
@@ -204,7 +207,19 @@ class GroupHole(inkex.EffectExtension):
                 child_clone = child.copy()
                 other_group.append(child_clone)
 
-        # Assemble hole group (green elements at top level)
+        # Assemble hole group with correct z-order (bottom to top in DOM):
+        # other → bunkers → fairways → green_XX → yardage_lines
+        # This order ensures yardage lines render on top of all elements, and allows
+        # terrain mask insertion between 'other' and 'bunkers' in Stage 4.
+
+        # Add subgroups first (bottom layers)
+        if len(other_group) > 0:
+            hole_group.append(other_group)
+        if len(bunkers_group) > 0:
+            hole_group.append(bunkers_group)
+        if len(fairways_group) > 0:
+            hole_group.append(fairways_group)
+
         # Green elements go directly at top level of hole group (not in subgroup)
         # This allows Stage 4 (Scale Greens Tool) to easily locate them via XPath queries
         for i, element in enumerate(green_elements):
@@ -217,16 +232,13 @@ class GroupHole(inkex.EffectExtension):
             if len(green_elements) > 1:
                 element.set('id', f"green_{hole_num:02d}_{i+1:02d}")
 
-            # Append green element directly to hole group
+            # Append green element directly to hole group (top layer)
             hole_group.append(element)
 
-        # Add subgroups
-        if len(fairways_group) > 0:
-            hole_group.append(fairways_group)
-        if len(bunkers_group) > 0:
-            hole_group.append(bunkers_group)
-        if len(other_group) > 0:
-            hole_group.append(other_group)
+        # Add yardage lines above green elements (top-most layer)
+        # This ensures yardage lines render on top of all other hole elements
+        if yardage_clone is not None:
+            hole_group.append(yardage_clone)
 
         # Apply canvas clipping to hole group (matches Stage 1 behavior)
         canvas_bounds = self._get_canvas_bounds()
