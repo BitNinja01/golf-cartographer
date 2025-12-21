@@ -20,7 +20,7 @@ Font Sizing and Spacing:
 Pipeline Context:
 - Input: SVG with positioned holes (output from Tool #3 / Stage 3)
 - Output: Holes with visual labels (hole number + par + tee yardages)
-- Next Stage: Tool #5 will export PDFs
+- Next Stage: Tool #5 (Export PDFs) will create the final yardage book PDFs
 
 Author: Golf Cartographer Extension Suite
 License: MIT

@@ -106,7 +106,8 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Stage 1: Off-canvas tolerance, color detection sensitivity
 - Stage 2: Hole number input (1-18)
 - Stage 3: Bounding box coordinates, buffer percentages, rotation angle offset
-- Stage 4: Output directory, PDF naming scheme
+- Stage 4: Font options, label positioning
+- Stage 5: Output directory, PDF naming scheme
 
 **Technical approach**:
 - Use Inkscape's `<param>` tags in `.inx` files
@@ -206,7 +207,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ### 10. Progress Indicators
 
-**Problem**: No feedback during long operations (Stage 4 takes 2-5 minutes)
+**Problem**: No feedback during long operations (Stage 5 takes 2-5 minutes)
 
 **Solution**: Show progress bar or status updates
 - "Processing hole 5 of 18..."
@@ -248,7 +249,8 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Stage 1: Check document has content, valid units
 - Stage 2: Verify at least N elements selected
 - Stage 3: Confirm exactly 18 hole groups exist, template layer present
-- Stage 4: Verify all required layers/groups exist
+- Stage 4: Verify hole groups exist for labeling
+- Stage 5: Verify all required layers/groups exist for export
 
 **Technical approach**:
 - Validation functions in each tool's `effect()` method
@@ -358,23 +360,23 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 18. Refactor Tool #4 (Export PDFs)
+### 18. Continue Code Quality Improvements
 
-**Problem**: Tool #4 hasn't received the same code quality treatment as Tools #1-3
+**Problem**: Ensure all tools maintain consistent code quality standards
 
-**Solution**: Apply consistent patterns
+**Solution**: Apply consistent patterns across all tools
 - Add type hints with `from __future__ import annotations`
 - Replace silent exception handling with logging
 - Use specific exception types
 - Extract any shared utilities
-- Get python-expert agent review
+- Regular code reviews
 
 **Technical approach**:
-- Read `export_pdfs.py`
-- Apply same refactoring patterns used in previous session
-- Consider extracting PDF export logic to utility module
+- Review all tool implementations periodically
+- Apply same refactoring patterns consistently
+- Consider extracting common logic to utility modules
 
-**Impact**: Consistent code quality across all tools
+**Impact**: Consistent code quality and maintainability across all tools
 
 ---
 
@@ -413,7 +415,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Each worker exports one PDF
 - Handle Inkscape API thread-safety
 
-**Impact**: Reduce Stage 4 time by 50-75%
+**Impact**: Reduce Stage 5 time by 50-75%
 
 ---
 
@@ -425,7 +427,8 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Stage 1: Preparing OSM data and flattening
 - Stage 2: Grouping holes efficiently
 - Stage 3: Understanding positioning and scaling
-- Stage 4: Exporting and printing PDFs
+- Stage 4: Adding hole labels with custom fonts
+- Stage 5: Exporting and printing PDFs
 - End-to-end: Complete workflow from OSM to print
 
 **Impact**: Easier onboarding for visual learners

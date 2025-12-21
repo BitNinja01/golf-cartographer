@@ -2,7 +2,7 @@
 
 **An Inkscape extension suite that automates golf yardage book creation from OpenStreetMap data**
 
-Transform raw OSM exports into professional, print-ready golf yardage books through an intelligent four-stage pipeline that handles flattening, grouping, positioning, and PDF export.
+Transform raw OSM exports into professional, print-ready golf yardage books through an intelligent five-stage pipeline that handles flattening, grouping, positioning, labeling, and PDF export.
 
 ---
 
@@ -14,8 +14,8 @@ Golf Cartographer eliminates the tedious manual work of creating golf course yar
 
 - **Flattens** complex nested SVG hierarchies from OSM exports
 - **Groups** golf course elements by hole using intelligent color detection
-- **Positions** all 18 holes with automatic rotation and scaling
-- **Scales** greens to appropriate detail size for yardage books
+- **Positions and scales** all 18 holes with automatic rotation, placing holes and greens appropriately
+- **Labels** holes with numbers, par, and tee box yardages
 - **Exports** 20 PDFs with strategic hole combinations for printing
 
 ### Key Features
@@ -53,8 +53,8 @@ Golf Cartographer eliminates the tedious manual work of creating golf course yar
 
 4. **Verify installation**:
    - Open Inkscape
-   - Navigate to `Extensions > Golf Yardage Book`
-   - You should see 4 tools numbered 1-4
+   - Navigate to `Extensions > Golf Cartographer`
+   - You should see 5 tools numbered 1-5
 
 ---
 
@@ -65,23 +65,25 @@ Golf Cartographer eliminates the tedious manual work of creating golf course yar
 1. **Export your golf course** from OpenStreetMap as SVG
 2. **Open the SVG** in Inkscape
 3. **Run each tool in sequence**:
-   - `Extensions > Golf Yardage Book > 1. Flatten SVG`
-   - `Extensions > Golf Yardage Book > 2. Group Hole` (run 18 times, once per hole)
-   - `Extensions > Golf Yardage Book > 3. Auto-Place Holes and Scale Greens`
-   - `Extensions > Golf Yardage Book > 4. Export PDFs`
+   - `Extensions > Golf Cartographer > 1. Flatten SVG`
+   - `Extensions > Golf Cartographer > 2. Group Hole` (run 18 times, once per hole)
+   - `Extensions > Golf Cartographer > 3. Auto-Place Holes and Scale Greens`
+   - `Extensions > Golf Cartographer > 4. Add Hole Label` (run 18 times, once per hole)
+   - `Extensions > Golf Cartographer > 5. Export PDFs`
 
 4. **Find your PDFs** in `examples/exported_pdfs/` (or your configured output directory)
 
 ### Expected Processing Time
 
-- **Stage 1** (Flatten): ~5-15 seconds
+- **Stage 1** (Flatten SVG): ~5-15 seconds
 - **Stage 2** (Group Hole): ~3-8 seconds per hole × 18 holes
-- **Stage 3** (Auto-Place & Scale): ~30-60 seconds
-- **Stage 4** (Export PDFs): ~2-5 minutes for all 20 PDFs
+- **Stage 3** (Auto-Place Holes and Scale Greens): ~30-60 seconds
+- **Stage 4** (Add Hole Label): ~3-5 seconds per hole × 18 holes
+- **Stage 5** (Export PDFs): ~2-5 minutes for all 20 PDFs
 
 ---
 
-## Four-Stage Pipeline
+## Five-Stage Pipeline
 
 ### Stage 1: Flatten SVG
 
@@ -113,7 +115,7 @@ Golf Cartographer eliminates the tedious manual work of creating golf course yar
 
 **How to use**:
 1. Select all elements belonging to hole 1
-2. Run `Extensions > Golf Yardage Book > 2. Group Hole`
+2. Run `Extensions > Golf Cartographer > 2. Group Hole`
 3. Repeat for holes 2-18
 
 **Example**: `examples/course_stage_2.svg`
@@ -159,14 +161,35 @@ TARGET_BOX = {
 GREEN_EDGE_BUFFER = 0.80  # 80% of box (20% margin)
 ```
 
-**Example**: `examples/course_stage_3_a.svg`, `examples/course_stage_3_b.svg`
+**Example**: `examples/course_stage_3.svg`
 
 ---
 
-### Stage 4: Export PDFs
+### Stage 4: Add Hole Label
 
-**Tool**: `4. Export PDFs`
-**Input**: Complete yardage book from Stage 3
+**Tool**: `4. Add Hole Label` (run 18 times)
+**Input**: Positioned holes from Stage 3
+**Output**: Holes with labels containing number, par, and tee yardages
+
+**What it does**:
+- Adds a circle with hole number
+- Displays par information
+- Shows yardages for up to 6 tee boxes
+- Uses custom glyph libraries for consistent typography
+
+**How to use**:
+1. Run `Extensions > Golf Cartographer > 4. Add Hole Label`
+2. Enter hole number, par, and tee box information
+3. Repeat for holes 1-18
+
+**Example**: `examples/course_stage_4.svg`
+
+---
+
+### Stage 5: Export PDFs
+
+**Tool**: `5. Export PDFs`
+**Input**: Complete yardage book from Stage 4
 **Output**: 20 PDF files with strategic hole combinations
 
 **What it does**:
@@ -212,7 +235,7 @@ BOUNDING_BOX = {
 }
 EDGE_BUFFER = 0.90  # Use 90% of box (10% margin)
 
-# Stage 4: Green detail area (bottom of page)
+# Stage 3: Green detail area (bottom of page)
 TARGET_BOX = {
     'x': 0.250,      # Left margin (inches)
     'y': 7.000,      # Top of green area (inches)

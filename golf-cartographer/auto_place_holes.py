@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Auto-Place Holes and Scale Greens Tool - Stages 3 & 4 of Golf Yardage Book Extension Suite
+Auto-Place Holes and Scale Greens Tool - Stage 3 of Golf Yardage Book Extension Suite
 
 This extension automatically positions and scales all 18 hole groups, then scales
-their greens for the yardage book template. It combines what were previously two
-separate stages into a single operation.
+their greens for the yardage book template. It performs both hole placement and
+green scaling in a single operation.
 
-Stage 3 - Hole Placement:
+Hole Placement:
 - Rotates each hole so its green faces toward the top
 - Scales holes to maximize space usage within bounding box
 - Positions holes in the "top" area of yardage book template
 
-Stage 4 - Green Scaling:
+Green Scaling:
 - Duplicates green elements from positioned holes
 - Scales greens to fit target box (3.75" x 3.75")
 - Centers greens in the "bottom" area of yardage book template
@@ -19,7 +19,7 @@ Stage 4 - Green Scaling:
 Pipeline Context:
 - Input: SVG with 18 hole groups (output from Tool #2 / Stage 2)
 - Output: Holes positioned in "top" area + scaled greens in "bottom" area
-- Next Stage: Tool #5 will export PDFs
+- Next Stage: Tool #4 (Add Hole Label) will add labels to each hole
 
 Author: Golf Yardage Book Extension Suite
 License: MIT
@@ -89,10 +89,11 @@ class AutoPlaceHoles(inkex.EffectExtension):
 
     def effect(self) -> None:
         """
-        Main execution method for the Auto-Place Holes and Scale Greens Tool (Stages 3 & 4).
+        Main execution method for the Auto-Place Holes and Scale Greens Tool (Stage 3).
 
-        Stage 3: Position and scale holes in "top" area
-        Stage 4: Scale greens in "bottom" area
+        This stage performs two operations:
+        1. Position and scale holes in "top" area
+        2. Scale greens in "bottom" area
         """
         root = self.document.getroot()
         processed_holes = []
