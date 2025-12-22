@@ -2,14 +2,26 @@
 """
 PDF Exporter Tool - Stage 5 of Golf Yardage Book Extension Suite
 
-This extension exports a complete yardage book as 20 individual PDF files with
-different hole combinations for flexible printing. It toggles visibility for
-different hole combinations on each page and calls the Inkscape CLI to generate
-PDFs at 300 DPI.
+This extension exports a complete yardage book through a three-step process:
 
-Exports:
-- 17 regular pages with hole pairs in reverse order (1-17, 2-16, etc.)
-- 3 special pages (18-notes, back-cover, yardage_chart-18)
+Step 1: Export 20 individual narrow PDFs (4.25" x 14" each)
+- Each page shows a hole layout (top) with a green (bottom)
+- Uses cross-pairing: hole layouts paired with different hole greens
+- Includes special pages: yardage_chart, back, cover, notes
+
+Step 2: Combine pairs side-by-side into 10 full-width pages (8.5" x 14" each)
+- Using pypdf to merge PDFs horizontally (left + right)
+- Sequential pairs: pages 1+2, 3+4, 5+6, etc.
+
+Step 3: Combine into 5 booklet PDFs for saddle-stitch printing (2 pages each)
+- yardage_book_01.pdf: wide pages 1+2 (innermost sheet)
+- yardage_book_02.pdf: wide pages 3+4
+- yardage_book_03.pdf: wide pages 5+6 (middle sheet)
+- yardage_book_04.pdf: wide pages 7+8
+- yardage_book_05.pdf: wide pages 9+10 (outermost sheet)
+
+Print double-sided (flip on short edge), stack in order, fold in half, and
+staple along center fold for a complete yardage book.
 
 Author: Golf Yardage Book Extension Suite
 License: MIT
@@ -21,11 +33,17 @@ import sys
 import subprocess
 import tempfile
 
+# Add python_libraries to path (for bundled pypdf)
+lib_path = os.path.join(os.path.dirname(__file__), 'python_libraries')
+sys.path.insert(0, lib_path)
+
+from pypdf import PdfWriter, PdfReader
+
 
 class ExportPDFs(inkex.EffectExtension):
     """
-    Exports complete yardage book as 20 individual PDFs with different hole
-    combinations for flexible printing.
+    Exports complete yardage book as individual PDF pages and combines them
+    into booklet format for saddle-stitch printing.
     """
 
     def add_arguments(self, pars):
@@ -34,6 +52,8 @@ class ExportPDFs(inkex.EffectExtension):
                          help="Output directory for PDF files")
         pars.add_argument("--filename_prefix", type=str, default="yardage_book_",
                          help="Filename prefix for PDF files")
+        pars.add_argument("--combine_booklets", type=inkex.Boolean, default=True,
+                         help="Combine individual PDFs into printable booklet format")
 
     def effect(self):
         """
@@ -42,13 +62,14 @@ class ExportPDFs(inkex.EffectExtension):
         Operations:
         1. Validate document structure (all required groups exist)
         2. Detect Inkscape CLI path for PDF generation
-        3. For each PDF configuration:
-           - Hide all holes in "top" and "bottom" groups
-           - Hide all special groups (notes, cover, back, yardage_chart)
-           - Show specified hole/group in "top"
-           - Show specified hole/group in "bottom"
-           - Export to PDF at 300 DPI
-        4. Report summary of successful/failed exports
+        3. Export 20 individual narrow PDFs (4.25" x 14" each):
+           - Configure visibility for each top/bottom pairing
+           - Export to temporary PDF at 300 DPI
+        4. If combine_booklets is enabled:
+           - Combine pairs side-by-side into 10 full-width pages (8.5" x 14")
+           - Combine 10 wide pages into 5 booklet PDFs (2 pages each)
+           - Clean up all temporary files
+        5. Report summary of successful/failed exports with print instructions
         """
         root = self.document.getroot()
 
@@ -89,56 +110,104 @@ class ExportPDFs(inkex.EffectExtension):
         # Store original visibility states for restoration
         original_states = self._save_visibility_states()
 
+        # Step 1: Define all 20 individual narrow page exports (4.25" x 14" each)
+        # Format: (top_element, bottom_element, special_top, special_bottom)
+        # Using top-bottom notation: "9-9" means hole 9 layout with green 9
+        individual_page_configs = [
+            # Pages 1-10
+            ("hole_09", "hole_09", False, False),           # 1. 9-9
+            ("hole_08", "hole_10", False, False),           # 2. 8-10
+            ("hole_07", "hole_11", False, False),           # 3. 7-11
+            ("hole_06", "hole_12", False, False),           # 4. 6-12
+            ("hole_05", "hole_13", False, False),           # 5. 5-13
+            ("hole_04", "hole_14", False, False),           # 6. 4-14
+            ("hole_03", "hole_15", False, False),           # 7. 3-15
+            ("hole_02", "hole_16", False, False),           # 8. 2-16
+            ("hole_01", "hole_17", False, False),           # 9. 1-17
+            ("yardage_chart", "hole_18", True, False),      # 10. yardage_chart-18
+            # Pages 11-20
+            ("hole_10", "hole_08", False, False),           # 11. 10-8
+            ("hole_11", "hole_07", False, False),           # 12. 11-7
+            ("hole_12", "hole_06", False, False),           # 13. 12-6
+            ("hole_13", "hole_05", False, False),           # 14. 13-5
+            ("hole_14", "hole_04", False, False),           # 15. 14-4
+            ("hole_15", "hole_03", False, False),           # 16. 15-3
+            ("hole_16", "hole_02", False, False),           # 17. 16-2
+            ("hole_17", "hole_01", False, False),           # 18. 17-1
+            ("hole_18", "notes", False, True),              # 19. 18-notes
+            ("back", "cover", True, True),                  # 20. back-cover
+        ]
+
+        # Step 2: Define how to combine into 10 full-width pages (side-by-side pairs)
+        # Combine sequential pairs: 1+2, 3+4, 5+6, etc.
+        page_combinations = [
+            (0, 1),    # Wide Page 1: narrow pages 1+2
+            (2, 3),    # Wide Page 2: narrow pages 3+4
+            (4, 5),    # Wide Page 3: narrow pages 5+6
+            (6, 7),    # Wide Page 4: narrow pages 7+8
+            (8, 9),    # Wide Page 5: narrow pages 9+10
+            (10, 11),  # Wide Page 6: narrow pages 11+12
+            (12, 13),  # Wide Page 7: narrow pages 13+14
+            (14, 15),  # Wide Page 8: narrow pages 15+16
+            (16, 17),  # Wide Page 9: narrow pages 17+18
+            (18, 19),  # Wide Page 10: narrow pages 19+20
+        ]
+
         try:
-            # Export 17 regular pages (hole pairs in reverse order)
-            # Each page pairs holes from opposite ends: 1+17, 2+16, 3+15, ..., 17+1
-            # This creates a symmetric booklet layout
-            for i in range(1, 18):
-                top_hole = f"hole_{i:02d}"
-                bottom_hole = f"hole_{18-i:02d}"
-                filename = f"{self.options.filename_prefix}{i}_{18-i}.pdf"
+            # Step 1: Export 20 individual narrow PDFs (4.25" x 14" each)
+            individual_pdf_paths = []
+            for idx, (top, bottom, special_top, special_bottom) in enumerate(individual_page_configs, 1):
+                filename = self._generate_narrow_filename(top, bottom, special_top, special_bottom)
                 output_path = os.path.join(output_dir, filename)
+                individual_pdf_paths.append(output_path)
 
                 try:
-                    self._configure_visibility(top_hole, bottom_hole)
+                    self._configure_visibility(top, bottom, special_top, special_bottom)
                     self._export_to_pdf(inkscape_path, output_path)
                     successful_exports.append(filename)
                 except Exception as e:
                     failed_exports.append((filename, str(e)))
                     inkex.errormsg(f"Failed to export {filename}: {e}")
 
-            # Export special page: hole 18 (final hole) with notes section
-            filename = f"{self.options.filename_prefix}18_notes.pdf"
-            output_path = os.path.join(output_dir, filename)
-            try:
-                self._configure_visibility("hole_18", "notes", special_bottom=True)
-                self._export_to_pdf(inkscape_path, output_path)
-                successful_exports.append(filename)
-            except Exception as e:
-                failed_exports.append((filename, str(e)))
-                inkex.errormsg(f"Failed to export {filename}: {e}")
+            # Step 2: Combine pairs side-by-side into 10 full-width pages (8.5" x 14" each)
+            combined_page_paths = []
+            if self.options.combine_booklets and len(individual_pdf_paths) == 20:
+                for idx, (left_idx, right_idx) in enumerate(page_combinations, 1):
+                    left_path = individual_pdf_paths[left_idx]
+                    right_path = individual_pdf_paths[right_idx]
 
-            # Export special page: back cover with front cover
-            filename = f"{self.options.filename_prefix}back_cover.pdf"
-            output_path = os.path.join(output_dir, filename)
-            try:
-                self._configure_visibility("back", "cover", special_top=True, special_bottom=True)
-                self._export_to_pdf(inkscape_path, output_path)
-                successful_exports.append(filename)
-            except Exception as e:
-                failed_exports.append((filename, str(e)))
-                inkex.errormsg(f"Failed to export {filename}: {e}")
+                    if os.path.exists(left_path) and os.path.exists(right_path):
+                        left_config = individual_page_configs[left_idx]
+                        right_config = individual_page_configs[right_idx]
+                        combined_filename = self._generate_wide_filename(left_config, right_config)
+                        combined_path = os.path.join(output_dir, combined_filename)
 
-            # Export special page: yardage chart with hole 18
-            filename = f"{self.options.filename_prefix}yardage_chart_18.pdf"
-            output_path = os.path.join(output_dir, filename)
-            try:
-                self._configure_visibility("yardage_chart", "hole_18", special_top=True)
-                self._export_to_pdf(inkscape_path, output_path)
-                successful_exports.append(filename)
-            except Exception as e:
-                failed_exports.append((filename, str(e)))
-                inkex.errormsg(f"Failed to export {filename}: {e}")
+                        try:
+                            self._combine_side_by_side(left_path, right_path, combined_path)
+                            combined_page_paths.append(combined_path)
+                        except Exception as e:
+                            inkex.errormsg(f"Failed to combine {combined_filename}: {e}")
+
+                # Clean up individual narrow PDFs after combining
+                for pdf_path in individual_pdf_paths:
+                    try:
+                        if os.path.exists(pdf_path):
+                            os.unlink(pdf_path)
+                    except:
+                        pass
+
+            # Step 3: Combine pages into booklet PDFs
+            booklet_files = []
+            if self.options.combine_booklets and len(combined_page_paths) == 10:
+                booklet_files = self._combine_into_booklets(combined_page_paths, output_dir)
+
+                # Clean up temporary combined page files
+                for temp_path in combined_page_paths:
+                    try:
+                        if os.path.exists(temp_path):
+                            os.unlink(temp_path)
+                    except:
+                        pass  # Silently ignore cleanup errors
 
         finally:
             # Restore original visibility states
@@ -146,15 +215,77 @@ class ExportPDFs(inkex.EffectExtension):
 
         # Report summary
         summary = f"PDF Export Complete:\n"
-        summary += f"  Successful: {len(successful_exports)}/20 PDFs\n"
+        if self.options.combine_booklets and booklet_files:
+            summary += f"  Exported {len(successful_exports)} individual pages (4.25\" x 14\")\n"
+            summary += f"  Combined into {len(combined_page_paths)} full pages (8.5\" x 14\")\n"
+            summary += f"  Created {len(booklet_files)} booklet PDFs for saddle-stitch printing:\n"
+            for booklet_file in booklet_files:
+                summary += f"    - {booklet_file}\n"
+            summary += f"\n  Print Instructions:\n"
+            summary += f"    1. Print each PDF double-sided (flip on short edge)\n"
+            summary += f"    2. Stack in order (05 on outside, 01 in center)\n"
+            summary += f"    3. Fold the stack in half\n"
+            summary += f"    4. Staple along center fold\n"
+        else:
+            summary += f"  Successful: {len(successful_exports)}/20 individual pages\n"
         if failed_exports:
-            summary += f"  Failed: {len(failed_exports)}/20 PDFs\n"
+            summary += f"\n  Failed: {len(failed_exports)}/20 pages\n"
             summary += "\nFailed exports:\n"
             for filename, error in failed_exports:
                 summary += f"  - {filename}: {error}\n"
         summary += f"\nOutput directory: {output_dir}"
 
         inkex.errormsg(summary)
+
+    def _format_element_name(self, element_name, is_special):
+        """
+        Format element name for use in filenames.
+
+        Args:
+            element_name: Element label (e.g., "hole_09", "yardage_chart", "back")
+            is_special: True if element is a special page (not a hole)
+
+        Returns:
+            str: Formatted name (e.g., "9", "yardage_chart", "back")
+        """
+        if is_special:
+            return element_name
+        # Extract number from hole_XX format
+        if element_name.startswith("hole_"):
+            return element_name.replace("hole_", "").lstrip("0") or "0"
+        return element_name
+
+    def _generate_narrow_filename(self, top, bottom, special_top, special_bottom):
+        """
+        Generate descriptive filename for narrow PDF based on content.
+
+        Args:
+            top: Top element name
+            bottom: Bottom element name
+            special_top: True if top is a special page
+            special_bottom: True if bottom is a special page
+
+        Returns:
+            str: Descriptive filename (e.g., "temp_narrow_9-9.pdf", "temp_narrow_back-cover.pdf")
+        """
+        top_name = self._format_element_name(top, special_top)
+        bottom_name = self._format_element_name(bottom, special_bottom)
+        return f"temp_narrow_{top_name}-{bottom_name}.pdf"
+
+    def _generate_wide_filename(self, left_config, right_config):
+        """
+        Generate descriptive filename for wide PDF based on the tops of both narrow pages.
+
+        Args:
+            left_config: Tuple (top, bottom, special_top, special_bottom) for left narrow page
+            right_config: Tuple (top, bottom, special_top, special_bottom) for right narrow page
+
+        Returns:
+            str: Descriptive filename (e.g., "temp_wide_9-8.pdf", "temp_wide_18-back.pdf")
+        """
+        left_top = self._format_element_name(left_config[0], left_config[2])
+        right_top = self._format_element_name(right_config[0], right_config[2])
+        return f"temp_wide_{left_top}-{right_top}.pdf"
 
     def _validate_document_structure(self):
         """
@@ -533,6 +664,108 @@ class ExportPDFs(inkex.EffectExtension):
                     os.unlink(temp_svg_path)
             except:
                 pass  # Silently ignore cleanup errors (temp file will be deleted by OS eventually)
+
+    def _combine_side_by_side(self, left_pdf_path, right_pdf_path, output_path):
+        """
+        Combine two 4.25" x 14" PDFs side-by-side into one 8.5" x 14" PDF.
+
+        Uses pypdf to create a new page with double width and positions both
+        PDFs horizontally adjacent to each other.
+
+        Args:
+            left_pdf_path: Path to left PDF (4.25" x 14")
+            right_pdf_path: Path to right PDF (4.25" x 14")
+            output_path: Path for combined output PDF (8.5" x 14")
+        """
+        from pypdf import Transformation, PageObject
+
+        # Read both PDFs
+        left_reader = PdfReader(left_pdf_path)
+        right_reader = PdfReader(right_pdf_path)
+
+        # Get the first page from each
+        left_page = left_reader.pages[0]
+        right_page = right_reader.pages[0]
+
+        # Get original dimensions (should be ~306 x 1008 points for 4.25" x 14")
+        original_width = float(left_page.mediabox.width)
+        original_height = float(left_page.mediabox.height)
+
+        # Create a new blank page with double width (8.5" x 14" = 612 x 1008 points)
+        combined_page = PageObject.create_blank_page(width=original_width * 2, height=original_height)
+
+        # Merge left page at original position (no transformation needed)
+        combined_page.merge_page(left_page)
+
+        # Merge right page with translation to position it on the right side
+        combined_page.merge_transformed_page(
+            right_page,
+            Transformation().translate(tx=original_width, ty=0)
+        )
+
+        # Write the combined page to output
+        writer = PdfWriter()
+        writer.add_page(combined_page)
+
+        with open(output_path, 'wb') as output_file:
+            writer.write(output_file)
+
+    def _combine_into_booklets(self, page_paths, output_dir):
+        """
+        Combine individual PDF pages into booklet format for saddle-stitch printing.
+
+        Creates 5 booklet PDFs, each with 2 pages, ordered for proper reading sequence
+        when printed double-sided, stacked, folded, and stapled.
+
+        Booklet structure:
+        - yardage_book_01.pdf: 9-8 / 10-11
+        - yardage_book_02.pdf: 7-6 / 12-13
+        - yardage_book_03.pdf: 5-4 / 14-15
+        - yardage_book_04.pdf: 3-2 / 16-17
+        - yardage_book_05.pdf: 1-yardage_chart / 18-back
+
+        Args:
+            page_paths: List of 10 individual PDF page file paths
+            output_dir: Directory for output booklet PDFs
+
+        Returns:
+            list: Filenames of created booklet PDFs
+        """
+        booklet_files = []
+
+        # Define booklet combinations (pairs of page indices)
+        # Each booklet gets 2 pages that form a double-sided sheet
+        # Pairing front nine with back nine for proper reading sequence
+        booklet_configs = [
+            (1, "yardage_book_01.pdf", [0, 5]),  # 9-8 / 10-11
+            (2, "yardage_book_02.pdf", [1, 6]),  # 7-6 / 12-13
+            (3, "yardage_book_03.pdf", [2, 7]),  # 5-4 / 14-15
+            (4, "yardage_book_04.pdf", [3, 8]),  # 3-2 / 16-17
+            (5, "yardage_book_05.pdf", [4, 9]),  # 1-yardage_chart / 18-back
+        ]
+
+        for booklet_num, filename, page_indices in booklet_configs:
+            try:
+                output_path = os.path.join(output_dir, filename)
+                writer = PdfWriter()
+
+                # Add each page to the booklet
+                for page_idx in page_indices:
+                    if page_idx < len(page_paths) and os.path.exists(page_paths[page_idx]):
+                        reader = PdfReader(page_paths[page_idx])
+                        if len(reader.pages) > 0:
+                            writer.add_page(reader.pages[0])
+
+                # Write the combined booklet PDF
+                with open(output_path, 'wb') as output_file:
+                    writer.write(output_file)
+
+                booklet_files.append(filename)
+
+            except Exception as e:
+                inkex.errormsg(f"Failed to create booklet {filename}: {e}")
+
+        return booklet_files
 
 
 if __name__ == '__main__':

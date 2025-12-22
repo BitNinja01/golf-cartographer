@@ -4,6 +4,7 @@
     <id>org.inkscape.golf.export_pdfs</id>
     <param name="output_dir" type="path" mode="folder" gui-text="Output Directory:">~/Desktop</param>
     <param name="filename_prefix" type="string" gui-text="Filename Prefix:">yardage_book_</param>
+    <param name="combine_booklets" type="bool" gui-text="Combine into booklet PDFs (for saddle-stitch printing)">true</param>
     <effect>
         <object-type>all</object-type>
         <effects-menu>

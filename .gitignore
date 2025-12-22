@@ -5,6 +5,7 @@
 examples/
 prompts/
 exports/
+print/
 CLAUDE.md
 DEBUG.md
 PICKUP_PROMPT.md
