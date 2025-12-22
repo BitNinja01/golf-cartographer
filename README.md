@@ -7,29 +7,31 @@
 
 ---
 <p align="center">
-  <img src="docs/logo_light.svg#gh-light-mode-only" alt="Golf Cartographer Logo" width="500">
-  <img src="docs/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
+  <img src="docs/images/logo_light.svg#gh-light-mode-only" alt="Golf Cartographer Logo" width="500">
+  <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
 # Golf Cartographer
 
 **Automate golf yardage book creation from OpenStreetMap data in Inkscape**
 
-Transform raw OSM exports into professional, print-ready 20-page yardage books through an intelligent five-stage pipeline. No more hours of manual layer organization, positioning, and PDF exports.
+Transform raw OSM exports into high-quality, print-ready 20-page yardage books through a five-stage pipeline. Golf Cartographer was born from my desire to reduce the number of hours I was spending creating yardage books manually in Inkscape, along with wanting to learn how to use Claude Code. No more hours of manual layer organization, positioning, and PDF exports/combinations.
+
+Before GC, I was spending upwards of **10-15 on/off hours** a week structuring this data manually, getting it formatted and printed, and stitching the whole thing together. GC reduces this to **under an hour** for a whole yardage book.
 
 ---
 
 ## What It Does
 
-Golf Cartographer is a suite of 5 Inkscape extensions that automate the complete yardage book workflow:
+Golf Cartographer is a series of 5 Inkscape tools that automate a complete yardage book workflow:
 
-1. **Flatten SVG** - Organize raw OSM data into structured element groups by color
-2. **Group Hole** (×18) - Organize elements into per-hole groups with terrain and greens
-3. **Auto-Place Holes and Scale Greens** - Position holes and scale green details automatically
-4. **Add Hole Label** (×18) - Add hole numbers, par, and tee box yardages
-5. **Export PDFs** - Generate 20 print-ready PDFs in booklet format
+1. **Flatten SVG** - Organize a raw OSM svg export into structured element groups by color
+2. **Group Hole** (×18) - Organize elements into per-hole groups with terrain, greens, bunkers and paths/water
+3. **Auto-Place Holes and Scale Greens** - Position holes and greens automatically on the pages
+4. **Add Hole Label** (×18) - Add hole numbers, par numbers, and tee box yardages to each page
+5. **Export PDFs** - Generate 20 print-ready PDFs in booklet format, and combine them into 5 saddle stitch ready PDFs if needed 
 
-Result: A complete yardage book ready for saddle-stitch printing, all from a single OSM export.
+Result: A complete yardage book ready for saddle-stitch printing, all from a single OSM export, and with minimal manual work.
 
 ---
 
@@ -39,12 +41,16 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 - **Python 3.7+** (bundled with modern Inkscape)
 - **OpenStreetMap SVG export** of your golf course
 
-<!-- SCREENSHOT: NICE-TO-HAVE - Raw OSM Export
-     Show: Screenshot of raw OSM export opened in Inkscape showing typical messy, ungrouped structure
-     Why: First-time users see what OSM exports look like and understand why Stage 1 is necessary -->
+OSM website:
+<p align="center">
+  <img src="docs/images/osm_example_01.png" width="500">
+</p>
 
+OSM export in Inkscape:
+<p align="center">
+  <img src="docs/images/osm_example_02.png" width="500">
+</p>
 ---
-
 ## Installation
 
 1. **Locate your Inkscape extensions folder**:
@@ -59,11 +65,10 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 3. **Restart Inkscape**
 
-4. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools
-
-<!-- SCREENSHOT: CRITICAL - Installation Verification
-     Show: Inkscape menu navigation: Extensions > Golf Cartographer with all 5 numbered tools visible in submenu
-     Why: Users verify correct installation and see exact menu structure -->
+4. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools and a glyph library tool.
+<p align="center">
+  <img src="docs/images/inkscape_01.png" width="500">
+</p>
 
 ---
 
