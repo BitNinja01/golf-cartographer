@@ -41,12 +41,12 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 OSM website:
 <p align="center">
-  <img src="docs/images/osm_example_01.png" width="500">
+  <img src="docs/images/osm_example_01.png">
 </p>
 
 OSM export in Inkscape:
 <p align="center">
-  <img src="docs/images/osm_example_02.png" width="500">
+  <img src="docs/images/osm_example_02.png">
 </p>
 ---
 ## Installation
@@ -65,7 +65,7 @@ OSM export in Inkscape:
 
 4. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools and a glyph library tool.
 <p align="center">
-  <img src="docs/images/inkscape_01.png" width="500">
+  <img src="docs/images/inkscape_01.png">
 </p>
 
 ---
