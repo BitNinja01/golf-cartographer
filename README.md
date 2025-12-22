@@ -6,7 +6,11 @@
 [![MIT License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
 
 <p align="center">
-  <img src="docs/logo.svg" alt="Golf Cartographer Logo" width="400">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo_dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/logo_light.svg">
+    <img src="docs/logo.svg" alt="Golf Cartographer Logo" width="400">
+  </picture>
 </p>
 
 # Golf Cartographer
