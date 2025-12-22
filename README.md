@@ -1,10 +1,9 @@
 <!-- PROJECT SHIELDS -->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![Discord][discord-shield]][discord-url]
+[![Contributors](https://img.shields.io/github/contributors/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/graphs/contributors)
+[![Forks](https://img.shields.io/github/forks/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/network/members)
+[![Stargazers](https://img.shields.io/github/stars/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/stargazers)
+[![Issues](https://img.shields.io/github/issues/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/issues)
+[![MIT License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
 
 # Golf Cartographer
 
