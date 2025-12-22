@@ -11,8 +11,6 @@
   <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
-# Golf Cartographer
-
 **Automate golf yardage book creation from OpenStreetMap data in Inkscape**
 
 Transform raw OSM exports into high-quality, print-ready 20-page yardage books through a five-stage pipeline. Golf Cartographer was born from my desire to reduce the number of hours I was spending creating yardage books manually in Inkscape, along with wanting to learn how to use Claude Code. No more hours of manual layer organization, positioning, and PDF exports/combinations.
