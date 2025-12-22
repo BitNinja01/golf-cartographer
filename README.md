@@ -5,6 +5,7 @@
 [![Issues](https://img.shields.io/github/issues/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/issues)
 [![MIT License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
 
+---
 <p align="center">
   <img src="docs/logo_light.svg#gh-light-mode-only" alt="Golf Cartographer Logo" width="500">
   <img src="docs/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
