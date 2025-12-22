@@ -80,10 +80,12 @@ Extensions > Golf Cartographer > 1. Flatten SVG
 ```
 Processes raw OSM data. Takes ~5-15 seconds. Creates organized element groups by color (greens, fairways, bunkers, water, trees, paths).
 
-<!-- SCREENSHOT: CRITICAL - Stage 1 Before/After Comparison
-     Show: Side-by-side showing raw OSM SVG (left) vs flattened organized groups (right) with layers panel visible
-     Why: "Organized element groups by color" is abstract - visual proof shows transformation value
-     Reference: examples/course_stage_1.svg with layers panel -->
+<p align="center">
+  <img src="docs/images/gc_tool_1_01.png">
+</p>
+<p align="center">
+  <img src="docs/images/gc_tool_1_02.png">
+</p>
 
 #### Stage 2: Group Hole (Run 18 times)
 ```
@@ -95,6 +97,10 @@ For each hole 1-18:
 3. Enter hole number (1-18) in dialog
 
 Takes ~3-8 seconds per hole. Each creates a `hole_N` group with terrain and green elements organized separately.
+
+<p align="center">
+  <img src="docs/images/gc_tool_1_01.png">
+</p>
 
 <!-- SCREENSHOT: CRITICAL - Hole Selection & Dialog
      Show: Inkscape with hole elements selected (highlighted) + Group Hole dialog with hole number input field
@@ -116,6 +122,9 @@ Automatically:
 - Rotates holes to face greens for optimal viewing
 - Extracts and scales greens to fit "bottom" area (3.75" × 3.75")
 - Applies 10% margins around holes, 20% around green details
+<p align="center">
+  <img src="docs/images/gc_tool_3_01.png">
+</p>
 
 <!-- SCREENSHOT: CRITICAL - Stage 3 Output
      Show: Inkscape canvas after Stage 3 with holes positioned in "top" area and greens scaled in "bottom" area with visible page boundaries
@@ -135,6 +144,9 @@ For each hole 1-18:
 3. Customize fonts if desired
 
 Takes ~3-5 seconds per hole. Each adds a circle with hole number, par text, and tee yardages. Supports custom fonts from glyph library.
+<p align="center">
+  <img src="docs/images/gc_tool_4_01.png">
+</p>
 
 <!-- SCREENSHOT: CRITICAL - Add Hole Label Dialog
      Show: Add Hole Label dialog showing all input fields (hole number, par, tee box names, yardages)
@@ -158,6 +170,9 @@ Takes ~2-5 minutes total. Generates 20 PDFs:
 - **Narrow PDFs** (4.25" × 14" each): 20 individual hole pages with strategic cross-pairing
 - **Wide PDFs** (8.5" × 14" each): 10 pages with pairs side-by-side
 - **Booklet PDFs** (5 files): Print-ready saddle-stitch booklets (2 pages each)
+<p align="center">
+  <img src="docs/images/gc_tool_5_01.png">
+</p>
 
 <!-- SCREENSHOT: HIGH - Export PDFs Dialog
      Show: Export PDFs dialog showing three input fields (Output Directory, Filename Prefix, Combine into Booklets checkbox)
