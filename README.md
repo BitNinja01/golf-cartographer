@@ -5,6 +5,10 @@
 [![Issues](https://img.shields.io/github/issues/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/issues)
 [![MIT License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
 
+<p align="center">
+  <img src="docs/logo.svg" alt="Golf Cartographer Logo" width="400">
+</p>
+
 # Golf Cartographer
 
 **Automate golf yardage book creation from OpenStreetMap data in Inkscape**
