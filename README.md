@@ -11,8 +11,6 @@
   <img src="docs/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
-# Golf Cartographer
-
 **Automate golf yardage book creation from OpenStreetMap data in Inkscape**
 
 Transform raw OSM exports into professional, print-ready 20-page yardage books through an intelligent five-stage pipeline. No more hours of manual layer organization, positioning, and PDF exports.
