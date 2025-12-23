@@ -221,7 +221,7 @@ The 20 narrow PDFs are strategically paired for a complete 18-hole booklet:
 | 9 | Hole 1 + Green 17 | 19 | Hole 18 + Notes |
 | 10 | Scorecard + Green 18 | 20 | Back + Cover |
 
-Each hole gets paired with a different hole's green for strategic mid-round reference (hole 9 appears twice as the turning point).
+Each hole gets paired with a different hole's green (except for hole 9 since it's in the middle).
 
 ---
 
