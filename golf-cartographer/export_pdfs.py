@@ -54,6 +54,8 @@ class ExportPDFs(inkex.EffectExtension):
                          help="Filename prefix for PDF files")
         pars.add_argument("--combine_booklets", type=inkex.Boolean, default=True,
                          help="Combine individual PDFs into printable booklet format")
+        pars.add_argument("--keep_narrow_pdfs", type=inkex.Boolean, default=False,
+                         help="Keep original 20 narrow PDFs (4.25\" x 14\")")
 
     def effect(self):
         """
@@ -62,14 +64,16 @@ class ExportPDFs(inkex.EffectExtension):
         Operations:
         1. Validate document structure (all required groups exist)
         2. Detect Inkscape CLI path for PDF generation
-        3. Export 20 individual narrow PDFs (4.25" x 14" each):
+        3. Create output subdirectories (exports/ and print/)
+        4. Export 20 individual narrow PDFs (4.25" x 14" each) to exports/:
            - Configure visibility for each top/bottom pairing
-           - Export to temporary PDF at 300 DPI
-        4. If combine_booklets is enabled:
+           - Export to PDF at 300 DPI
+        5. If combine_booklets is enabled:
            - Combine pairs side-by-side into 10 full-width pages (8.5" x 14")
-           - Combine 10 wide pages into 5 booklet PDFs (2 pages each)
-           - Clean up all temporary files
-        5. Report summary of successful/failed exports with print instructions
+           - Combine 10 wide pages into 5 booklet PDFs (2 pages each) in print/
+           - Clean up temporary wide page files
+           - Optionally clean up narrow PDFs (unless keep_narrow_pdfs is enabled)
+        6. Report summary of successful/failed exports with print instructions
         """
         root = self.document.getroot()
 
@@ -102,6 +106,17 @@ class ExportPDFs(inkex.EffectExtension):
             except Exception as e:
                 inkex.errormsg(f"Failed to create output directory: {e}")
                 return
+
+        # Create subdirectories for exports and print
+        exports_dir = os.path.join(output_dir, 'exports')
+        print_dir = os.path.join(output_dir, 'print')
+        for subdir in [exports_dir, print_dir]:
+            if not os.path.exists(subdir):
+                try:
+                    os.makedirs(subdir)
+                except Exception as e:
+                    inkex.errormsg(f"Failed to create subdirectory {subdir}: {e}")
+                    return
 
         # Track successful and failed exports
         successful_exports = []
@@ -158,7 +173,7 @@ class ExportPDFs(inkex.EffectExtension):
             individual_pdf_paths = []
             for idx, (top, bottom, special_top, special_bottom) in enumerate(individual_page_configs, 1):
                 filename = self._generate_narrow_filename(top, bottom, special_top, special_bottom)
-                output_path = os.path.join(output_dir, filename)
+                output_path = os.path.join(exports_dir, filename)
                 individual_pdf_paths.append(output_path)
 
                 try:
@@ -188,18 +203,19 @@ class ExportPDFs(inkex.EffectExtension):
                         except Exception as e:
                             inkex.errormsg(f"Failed to combine {combined_filename}: {e}")
 
-                # Clean up individual narrow PDFs after combining
-                for pdf_path in individual_pdf_paths:
-                    try:
-                        if os.path.exists(pdf_path):
-                            os.unlink(pdf_path)
-                    except:
-                        pass
+                # Clean up individual narrow PDFs after combining (unless user wants to keep them)
+                if not self.options.keep_narrow_pdfs:
+                    for pdf_path in individual_pdf_paths:
+                        try:
+                            if os.path.exists(pdf_path):
+                                os.unlink(pdf_path)
+                        except:
+                            pass
 
             # Step 3: Combine pages into booklet PDFs
             booklet_files = []
             if self.options.combine_booklets and len(combined_page_paths) == 10:
-                booklet_files = self._combine_into_booklets(combined_page_paths, output_dir)
+                booklet_files = self._combine_into_booklets(combined_page_paths, print_dir)
 
                 # Clean up temporary combined page files
                 for temp_path in combined_page_paths:
@@ -213,12 +229,26 @@ class ExportPDFs(inkex.EffectExtension):
             # Restore original visibility states
             self._restore_visibility_states(original_states)
 
+        # Clean up empty directories
+        try:
+            if os.path.exists(exports_dir) and not os.listdir(exports_dir):
+                os.rmdir(exports_dir)
+        except:
+            pass  # Silently ignore cleanup errors
+
+        try:
+            if os.path.exists(print_dir) and not os.listdir(print_dir):
+                os.rmdir(print_dir)
+        except:
+            pass  # Silently ignore cleanup errors
+
         # Report summary
         summary = f"PDF Export Complete:\n"
         if self.options.combine_booklets and booklet_files:
-            summary += f"  Exported {len(successful_exports)} individual pages (4.25\" x 14\")\n"
+            if self.options.keep_narrow_pdfs:
+                summary += f"  Exported {len(successful_exports)} individual pages (4.25\" x 14\") to exports/\n"
             summary += f"  Combined into {len(combined_page_paths)} full pages (8.5\" x 14\")\n"
-            summary += f"  Created {len(booklet_files)} booklet PDFs for saddle-stitch printing:\n"
+            summary += f"  Created {len(booklet_files)} booklet PDFs in print/ folder:\n"
             for booklet_file in booklet_files:
                 summary += f"    - {booklet_file}\n"
             summary += f"\n  Print Instructions:\n"
@@ -227,13 +257,19 @@ class ExportPDFs(inkex.EffectExtension):
             summary += f"    3. Fold the stack in half\n"
             summary += f"    4. Staple along center fold\n"
         else:
-            summary += f"  Successful: {len(successful_exports)}/20 individual pages\n"
+            summary += f"  Successful: {len(successful_exports)}/20 individual pages in exports/\n"
         if failed_exports:
             summary += f"\n  Failed: {len(failed_exports)}/20 pages\n"
             summary += "\nFailed exports:\n"
             for filename, error in failed_exports:
                 summary += f"  - {filename}: {error}\n"
-        summary += f"\nOutput directory: {output_dir}"
+        summary += f"\n"
+        if os.path.exists(exports_dir):
+            summary += f"  Narrow PDFs: {exports_dir}\n"
+        if os.path.exists(print_dir):
+            summary += f"  Booklet PDFs: {print_dir}\n"
+        if not os.path.exists(exports_dir) and not os.path.exists(print_dir):
+            summary += f"  Output directory: {output_dir}"
 
         inkex.errormsg(summary)
 
@@ -266,11 +302,11 @@ class ExportPDFs(inkex.EffectExtension):
             special_bottom: True if bottom is a special page
 
         Returns:
-            str: Descriptive filename (e.g., "temp_narrow_9-9.pdf", "temp_narrow_back-cover.pdf")
+            str: Descriptive filename (e.g., "9-9.pdf", "back-cover.pdf")
         """
         top_name = self._format_element_name(top, special_top)
         bottom_name = self._format_element_name(bottom, special_bottom)
-        return f"temp_narrow_{top_name}-{bottom_name}.pdf"
+        return f"{top_name}-{bottom_name}.pdf"
 
     def _generate_wide_filename(self, left_config, right_config):
         """

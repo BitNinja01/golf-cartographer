@@ -38,6 +38,9 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 - **Inkscape 1.4.2 or later** (required - earlier versions have incompatible APIs)
 - **Python 3.7+** (bundled with modern Inkscape)
 - **OpenStreetMap SVG export** of your golf course
+	- https://www.openstreetmap.org
+	- **Tip:** Set the 'scale' value in the OSM download dialogue to something like '1000'. This will set the value to the lowest available one, which will give us more detail to work with.
+- The scorecard of your golf course
 
 OSM website:
 <p align="center">
@@ -74,7 +77,7 @@ OSM export in Inkscape:
 
 ### The Five-Stage Workflow
 
-#### Stage 1: Flatten SVG
+#### Step 1: Flatten SVG
 ```
 Extensions > Golf Cartographer > 1. Flatten SVG
 ```
@@ -86,8 +89,11 @@ Processes raw OSM data. Takes ~5-15 seconds. Creates organized element groups by
 <p align="center">
   <img src="docs/images/gc_tool_1_02.png">
 </p>
+After running this tool, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next tool runs.
 
-#### Stage 2: Group Hole (Run 18 times)
+A current limitation of this tool - the hole numbers will be caught in the cleaning process. I recommend keeping OSM open while you group the holes.
+
+#### Step 2: Group Hole
 ```
 Extensions > Golf Cartographer > 2. Group Hole
 ```
@@ -99,7 +105,7 @@ For each hole 1-18:
 Takes ~3-8 seconds per hole. Each creates a `hole_N` group with terrain and green elements organized separately.
 
 <p align="center">
-  <img src="docs/images/gc_tool_1_01.png">
+  <img src="docs/images/gc_tool_2_01.png">
 </p>
 
 <!-- SCREENSHOT: CRITICAL - Hole Selection & Dialog
@@ -186,6 +192,28 @@ Takes ~2-5 minutes total. Generates 20 PDFs:
 <!-- SCREENSHOT: HIGH - Booklet Assembly Diagram
      Show: Illustration showing physical assembly steps - 5 booklets stacked (05 outside), folding, stapling along center
      Why: Saddle-stitch printing instructions hard to visualize - reduces printing errors and wasted paper -->
+
+#### Optional: Prepare Glyph Library (Before Stage 4)
+```
+Extensions > Golf Cartographer > 0. Prepare Glyph Library
+```
+
+The glyph library tool prepares custom fonts for use in hole labels. Run this **before Stage 4** if Claude wants to use fonts other than the default system fonts.
+
+**When to use**:
+- Before running Stage 4 (Add Hole Label)
+- When Claude wants custom fonts for hole numbers, par text, or tee yardages
+- Only needs to be run once per font family
+
+**How to use**:
+1. Run the tool from Extensions menu
+2. Enter the font family name (e.g., "Arial", "Times New Roman")
+3. Select the font style (Regular, Bold, Italic, Bold Italic)
+4. Click Apply
+
+The tool creates glyph paths that Stage 4 can reference. If Claude doesn't run this tool, Stage 4 will use default system fonts which work fine for most yardage books.
+
+**Tip**: To see all available fonts on the system, switch to the "Show Fonts" tab and click Apply. This lists every font Claude can use with the glyph library.
 
 ---
 
@@ -304,48 +332,15 @@ golf-cartographer/
 
 ---
 
-## Examples
-
-The `examples/` folder contains SVG files showing output at each stage:
-
-- `examples/course_stage_1.svg` - After Stage 1 (flattened elements)
-- `examples/course_stage_2.svg` - After Stage 2 (grouped holes ×18)
-- `examples/course_stage_3.svg` - After Stage 3 (positioned holes and scaled greens)
-- `examples/course_stage_4.svg` - After Stage 4 (hole labels added ×18)
-- `examples/course_stage_5.svg` - After Stage 5 (final yardage book)
-- `examples/exported_pdfs/` - Sample output PDFs
-
----
-
-## Performance
-
-Expected processing times on typical hardware:
-
-| Stage | Time |
-|-------|------|
-| Stage 1 (Flatten) | 5-15s |
-| Stage 2 per hole | 3-8s (×18 = 1-2 min total) |
-| Stage 3 (Auto-Place) | 30-60s |
-| Stage 4 per hole | 3-5s (×18 = 1-2 min total) |
-| Stage 5 (Export PDFs) | 2-5 min |
-| **Total** | **~10-15 minutes** |
-
----
-
 ## Contributing
 
-Contributions welcome! Check [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for ideas:
-
-**High Priority**: Batch hole grouping, auto-detect holes, undo support
-**Medium Priority**: Configuration files, template library, interactive dialogs
-**Golf Features**: Yardage lines, hazard calculator, elevation profiles
-**Performance**: Parallel PDF export, unit tests, enhanced logging
+Contributions welcome! Check [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for ideas or come up with your own :)
 
 To contribute:
 1. Read [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md)
 2. Add type hints and docstrings
 3. Test manually in Inkscape
-4. Submit PR with clear description and example SVG
+4. Submit PR with clear description and example input and output SVGs
 
 ---
 

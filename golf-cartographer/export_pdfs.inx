@@ -5,6 +5,7 @@
     <param name="output_dir" type="path" mode="folder" gui-text="Output Directory:">~/Desktop</param>
     <param name="filename_prefix" type="string" gui-text="Filename Prefix:">yardage_book_</param>
     <param name="combine_booklets" type="bool" gui-text="Combine into booklet PDFs (for saddle-stitch printing)">true</param>
+    <param name="keep_narrow_pdfs" type="bool" gui-text="Keep original 20 narrow PDFs (4.25&quot; x 14&quot;)">false</param>
     <effect>
         <object-type>all</object-type>
         <effects-menu>

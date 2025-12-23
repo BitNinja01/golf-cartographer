@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-    <name>Prepare Glyph Library</name>
+    <name>0. Prepare Glyph Library</name>
     <id>com.golfcartographer.prepare_glyph_library</id>
 
     <param name="notebook" type="notebook">
