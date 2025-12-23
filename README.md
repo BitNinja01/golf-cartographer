@@ -225,38 +225,6 @@ Each hole gets paired with a different hole's green for strategic mid-round refe
 
 ---
 
-## Configuration
-
-### Adjusting Hole Placement
-
-Edit `auto_place_holes.py` if you need custom positioning for the auto place tool:
-
-```python
-# Top area (hole layouts)
-BOUNDING_BOX = {
-    'x': 0.257,      # Left margin
-    'y': 0.247,      # Top margin
-    'width': 3.736,  # Hole layout width
-    'height': 6.756  # Hole layout height
-}
-EDGE_BUFFER = 0.90  # Use 90% of box (10% margin)
-
-# Bottom area (green details)
-TARGET_BOX = {
-    'x': 0.250,      # Left margin
-    'y': 7.000,      # Start position
-    'width': 3.750,  # Green detail width
-    'height': 3.750  # Green detail height
-}
-GREEN_EDGE_BUFFER = 0.80  # Use 80% of box (20% margin)
-```
-
-### Fixing Color Detection
-
-If elements aren't categorized correctly, OSM colors may differ from defaults. Adjust thresholds in `color_utils.py` for your specific OSM export.
-
----
-
 ## Troubleshooting
 
 ### Extensions don't appear in menu
