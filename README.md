@@ -18,7 +18,7 @@ Golf Cartographer (GC) was born from my desire to optimize the time I was spendi
 
 ---
 
-## What It Does
+# What It Does
 
 At Golf Cartographer's core is a series of 5 Inkscape tools that automate a complete yardage book workflow:
 
@@ -32,7 +32,7 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 ---
 
-## Requirements
+# Requirements
 
 - [**Inkscape 1.4.2 or later**](https://inkscape.org/) 
 	- Required - earlier versions have incompatible APIs
@@ -58,7 +58,7 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 </p>
 ---
 
-## Installation
+# Installation
 
 1. Download the [latest Golf Cartographer release](https://github.com/BitNinja01/golf-cartographer/releases)
 2. Unzip the downloaded file
@@ -74,9 +74,9 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 ---
 
-## Quick Start
+# Quick Start
 
-#### Step 1: Flatten SVG
+### Step 1: Flatten SVG
 ```
 Extensions > Golf Cartographer > 1. Flatten SVG
 ```
@@ -91,7 +91,7 @@ This will strip out any "fluff" we don't need. A current limitation - any hole n
 
 After running, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next steps of the process. I also usually delete the "mapping_lines" group inside the "other" group after Step 2.
 
-#### Step 2: Group Hole
+### Step 2: Group Hole
 ```
 Extensions > Golf Cartographer > 2. Group Hole
 ```
@@ -120,7 +120,7 @@ Takes ~3-8 seconds per hole. Each run creates a `hole_XX` group with terrain, gr
 
 Save the resulting document as an SVG, we'll need it in the next step.
 
-#### Step 3: Auto-Place Holes
+### Step 3: Auto-Place Holes
 ```
 Extensions > Golf Cartographer > 3. Auto-Place Holes
 ```
@@ -134,7 +134,7 @@ This will automatically:
 - Position and scale all 18 holes into the top page
 - Extract and scale a copy of each green, and fit each one inside the bottom page grid
 
-#### Step 4: Add Hole Label
+### Step 4: Add Hole Label
 ```
 Extensions > Golf Cartographer > 4. Add Hole Label
 ```
@@ -154,7 +154,7 @@ Takes ~5-10 seconds per hole. Adds a circle with the hole number, par number, an
 
 If you're a nerd wondering why we need glyph libraries for system fonts at all - Inkscape's Python API is kind of arcane, and doesn't like it when you run bounding box math on text objects. So yeah. Glyph libraries.
 
-#### Step 5: Export PDFs
+### Step 5: Export PDFs
 ```
 Extensions > Golf Cartographer > 5. Export PDFs
 ```
@@ -178,7 +178,7 @@ Takes ~2-5 minutes total. Generates 20 PDFs, and combines them into 5:
 4. Trim borders using a ruler and craft knife
 5. 
 
-#### Optional: Prepare Glyph Library
+### Optional: Prepare Glyph Library
 ```
 Extensions > Golf Cartographer > 0. Prepare Glyph Library
 ```
@@ -209,7 +209,7 @@ The tool creates glyph paths that Stage 4 can reference. The Add Hole Label tool
 
 ---
 
-## Understanding the PDF Output
+# Understanding the PDF Output
 
 The 20 narrow PDFs are strategically paired for a complete 18-hole booklet:
 
@@ -230,23 +230,23 @@ Each hole gets paired with a different hole's green (except for hole 9 since it'
 
 ---
 
-## Troubleshooting
+# Troubleshooting
 
-### Extensions don't appear in menu
+## Extensions don't appear in menu
 - Verify both `.py` and `.inx` files copied to extensions folder
 - Restart Inkscape completely
 - Check Inkscape version is 1.4.2+
-### ImportError when running tool
+## ImportError when running tool
 - All utility files must be present: `transform_utils.py`, `geometry_utils.py`, `color_utils.py`
 - Verify Python 3.7+ is available
-### Color detection not working
+## Color detection not working
 - Check element colors match OSM palette
 - Verify elements have fill or stroke colors set
 - Manually adjust colors in Inkscape if needed, then retry
-### Holes positioned incorrectly
+## Holes positioned incorrectly
 - Ensure holes were properly grouped in Stage 2 with both terrain and greens
 - Be sure to use the ```template_yardage_book.svg``` file when using these tools
-### PDFs fail to export
+## PDFs fail to export
 - All holes must be named `hole_1` through `hole_18`
 - Output directory must exist and be writable
 - Check no holes are locked in Inkscape
@@ -254,7 +254,7 @@ Each hole gets paired with a different hole's green (except for hole 9 since it'
 
 ---
 
-## Contributing
+# Contributing
 
 Contributions welcome! Check [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for ideas or come up with your own :)
 
