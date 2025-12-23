@@ -84,7 +84,7 @@ class GroupHole(inkex.EffectExtension):
 
         Green Element Positioning:
         Green elements are placed directly at the top level of the hole group (not in a
-        subgroup) to allow later stages (especially Stage 4: Scale Greens) to easily
+        subgroup) to allow later stages (especially Stage 3: Auto-Place Holes) to easily
         locate and manipulate them individually.
 
         Yardage Line Positioning Strategy:
@@ -221,7 +221,7 @@ class GroupHole(inkex.EffectExtension):
             hole_group.append(fairways_group)
 
         # Green elements go directly at top level of hole group (not in subgroup)
-        # This allows Stage 3 (Auto-Place Holes and Scale Greens) to easily locate them via XPath queries
+        # This allows Stage 3 (Auto-Place Holes) to easily locate them via XPath queries
         for i, element in enumerate(green_elements):
             # Assign ID based on hole number for later identification
             # Standard format: green_XX (e.g., green_01, green_02, etc.)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-Place Holes and Scale Greens Tool - Stage 3 of Golf Yardage Book Extension Suite
+Auto-Place Holes Tool - Stage 3 of Golf Yardage Book Extension Suite
 
 This extension automatically positions and scales all 18 hole groups, then scales
 their greens for the yardage book template. It performs both hole placement and
@@ -59,7 +59,7 @@ TerrainElement = Tuple["BaseElement", Group, int]  # (element, original_parent, 
 
 class AutoPlaceHoles(inkex.EffectExtension):
     """
-    Auto-Place Holes and Scale Greens tool - combines Stages 3 & 4 of the pipeline.
+    Auto-Place Holes tool - combines Stages 3 & 4 of the pipeline.
     """
 
     # Stage 3: Hardcoded bounding box for hole placement in "top" area (units in inches)
@@ -89,7 +89,7 @@ class AutoPlaceHoles(inkex.EffectExtension):
 
     def effect(self) -> None:
         """
-        Main execution method for the Auto-Place Holes and Scale Greens Tool (Stage 3).
+        Main execution method for the Auto-Place Holes Tool (Stage 3).
 
         This stage performs two operations:
         1. Position and scale holes in "top" area
@@ -193,8 +193,18 @@ class AutoPlaceHoles(inkex.EffectExtension):
             inkex.errormsg("Could not find 'bottom' group. Skipping green scaling.")
             greens_processed = 0
         else:
+            # Find greens_guide group to determine insertion point
+            greens_guide_index = None
+            for i, child in enumerate(bottom_group):
+                if isinstance(child, Group):
+                    label = child.get(inkex.addNS('label', 'inkscape'))
+                    if label and label.lower() == 'greens_guide':
+                        greens_guide_index = i
+                        break
+
             # Process each hole's green
             greens_processed = 0
+            insertion_index = greens_guide_index  # Track current insertion point
             for hole_num in range(1, 19):
                 green, hole_group = self._find_green_with_parent(root, hole_num)
                 if green is not None and hole_group is not None:
@@ -206,8 +216,14 @@ class AutoPlaceHoles(inkex.EffectExtension):
                     # Get the inherited transform from the hole group
                     hole_group_transform = hole_group.transform if hole_group.transform is not None else Transform()
 
-                    # Add green copy to bottom group
-                    bottom_group.append(green_copy)
+                    # Add green copy to bottom group BEFORE greens_guide
+                    # This ensures greens are between 'cover' and 'greens_guide' in the stack
+                    if insertion_index is not None:
+                        bottom_group.insert(insertion_index, green_copy)
+                        insertion_index += 1  # Increment for next green to maintain order
+                    else:
+                        # Fallback: append to end if greens_guide not found
+                        bottom_group.append(green_copy)
 
                     # Position and scale using temp group measurement
                     self._position_and_scale_green(green_copy, hole_group_transform, hole_num)

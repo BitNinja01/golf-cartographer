@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-    <name>3. Auto-Place Holes and Scale Greens</name>
+    <name>3. Auto-Place Holes</name>
     <id>org.inkscape.golf.auto_place_holes</id>
     <effect>
         <object-type>all</object-type>

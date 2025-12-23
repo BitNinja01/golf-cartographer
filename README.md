@@ -15,7 +15,7 @@
 
 Transform raw OSM exports into high-quality, print-ready 20-page yardage books through a five-stage pipeline. Golf Cartographer was born from my desire to reduce the number of hours I was spending creating yardage books manually in Inkscape, along with wanting to learn how to use Claude Code. No more hours of manual layer organization, positioning, and PDF exports/combinations.
 
-Before GC, I was spending upwards of **10-15 on/off hours** a week structuring this data manually, getting it formatted and printed, and stitching the whole thing together. GC reduces this to **under an hour** for a whole yardage book.
+Before GC, I was spending upwards of **10-15 on/off hours** a week structuring this data manually, getting it formatted and printed, and stitching the whole thing together. GC reduces this to **a little over an hour** for a whole yardage book.
 
 ---
 
@@ -25,7 +25,7 @@ Golf Cartographer is a series of 5 Inkscape tools that automate a complete yarda
 
 1. **Flatten SVG** - Organize a raw OSM svg export into structured element groups by color
 2. **Group Hole** (×18) - Organize elements into per-hole groups with terrain, greens, bunkers and paths/water
-3. **Auto-Place Holes and Scale Greens** - Position holes and greens automatically on the pages
+3. **Auto-Place Holes** - Position holes and greens automatically on the pages
 4. **Add Hole Label** (×18) - Add hole numbers, par numbers, and tee box yardages to each page
 5. **Export PDFs** - Generate 20 print-ready PDFs in booklet format, and combine them into 5 saddle stitch ready PDFs if needed 
 
@@ -117,9 +117,9 @@ Takes ~3-8 seconds per hole. Each creates a `hole_N` group with terrain and gree
      Why: Shows actual layer structure users should verify after Stage 2
      Reference: examples/course_stage_2.svg layers panel -->
 
-#### Stage 3: Auto-Place Holes and Scale Greens
+#### Stage 3: Auto-Place Holes
 ```
-Extensions > Golf Cartographer > 3. Auto-Place Holes and Scale Greens
+Extensions > Golf Cartographer > 3. Auto-Place Holes
 ```
 No parameters needed. Runs once. Takes ~30-60 seconds.
 
