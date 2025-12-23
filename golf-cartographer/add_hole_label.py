@@ -488,6 +488,54 @@ class AddHoleLabel(inkex.EffectExtension):
 
             logger.info(f"Reordered geo_{hole_num:02d} children to correct z-order")
 
+    def validate_font_family(self, font_family: str) -> str:
+        """
+        Validate font family and fallback to JetBrains Mono Nerd Font if invalid.
+
+        Checks if the glyph library .svg file exists in the glyph_libraries folder.
+        Falls back to JetBrains Mono Nerd Font if the specified font is not found.
+
+        Args:
+            font_family: Font family name to validate
+
+        Returns:
+            Valid font family name (original or fallback)
+
+        Raises:
+            inkex.AbortExtension: If neither provided font nor JetBrains Mono Nerd Font are available
+        """
+        import os
+
+        # Check if font_family is empty or just whitespace
+        if not font_family or not font_family.strip():
+            inkex.errormsg("No font family provided. Using fallback: JetBrainsMono Nerd Font")
+            font_family = "JetBrainsMono Nerd Font"
+
+        # Get path to glyph_libraries folder
+        glyph_dir = os.path.join(os.path.dirname(__file__), 'glyph_libraries')
+
+        # Check if provided font library exists
+        library_path = os.path.join(glyph_dir, f'{font_family}.svg')
+        if os.path.exists(library_path):
+            return font_family
+
+        # Font library not found - try fallback to JetBrainsMono Nerd Font
+        fallback_font = "JetBrainsMono Nerd Font"
+        if font_family != fallback_font:
+            # User specified a different font that wasn't found
+            fallback_path = os.path.join(glyph_dir, f'{fallback_font}.svg')
+            if os.path.exists(fallback_path):
+                inkex.errormsg(f"Glyph library '{font_family}.svg' not found. Using fallback: {fallback_font}")
+                return fallback_font
+
+        # Neither the requested font nor JetBrainsMono Nerd Font are available
+        raise inkex.AbortExtension(
+            f"ERROR: Glyph library '{font_family}.svg' not found.\n"
+            f"Please create 'JetBrainsMono Nerd Font.svg' using the Prepare Glyph Library tool,\n"
+            f"or specify a valid font that exists in the glyph_libraries folder.\n"
+            f"Use the 'List Fonts' tab to see available glyph library fonts."
+        )
+
     def effect(self) -> None:
         """
         Main execution method for Add Hole Label Tool.
@@ -514,23 +562,17 @@ class AddHoleLabel(inkex.EffectExtension):
         hole_num = self.options.hole_number
         par = self.options.par
 
-        # Load glyph library for accurate text measurements
+        # Validate font family and fallback to JetBrains Mono Nerd Font if invalid
         import os
-        font_name = self.options.font_family.strip()
+        font_name = self.validate_font_family(self.options.font_family.strip())
+
+        # Load glyph library for accurate text measurements
+        # Note: validate_font_family() already verified the file exists
         library_path = os.path.join(
             os.path.dirname(__file__),
             'glyph_libraries',
             f'{font_name}.svg'
         )
-
-        # Check if library file exists
-        if not os.path.exists(library_path):
-            logger.error("Glyph library not found: %s", library_path)
-            inkex.errormsg(f"Error: Glyph library font '{font_name}' not found!")
-            inkex.errormsg(f"Expected file: {library_path}")
-            inkex.errormsg("")
-            inkex.errormsg("Use the 'List Fonts' tab to see available fonts.")
-            return
 
         try:
             self.glyph_library = GlyphLibrary(library_path)

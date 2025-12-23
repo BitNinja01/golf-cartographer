@@ -27,7 +27,7 @@ class PrepareGlyphLibrary(inkex.EffectExtension):
     def add_arguments(self, pars):
         """Add command line arguments."""
         pars.add_argument("--notebook", type=str, default="prepare", help="Active notebook tab")
-        pars.add_argument("--font_family", type=str, default="Arial", help="Font family name")
+        pars.add_argument("--font_family", type=str, default="JetBrainsMono Nerd Font", help="Font family name")
         pars.add_argument("--font_style", type=str, default="normal", help="Font style")
 
     def effect(self):
@@ -41,6 +41,9 @@ class PrepareGlyphLibrary(inkex.EffectExtension):
         # Get font parameters
         font_family = self.options.font_family
         font_style = self.options.font_style
+
+        # Validate font family and fallback to JetBrains Mono Nerd Font if invalid
+        font_family = self.validate_font_family(font_family)
 
         # Character sets (in normal order for left-to-right display)
         digits = "0123456789"
@@ -123,6 +126,46 @@ class PrepareGlyphLibrary(inkex.EffectExtension):
 
         # Resize canvas to fit content with padding
         self.resize_canvas_to_content(padding_mm=5)
+
+    def validate_font_family(self, font_family):
+        """
+        Validate font family and fallback to JetBrains Mono Nerd Font if invalid.
+
+        Args:
+            font_family: Font family name to validate
+
+        Returns:
+            Valid font family name (original or fallback)
+
+        Raises:
+            inkex.AbortExtension: If neither provided font nor JetBrains Mono Nerd Font are available
+        """
+        # Check if font_family is empty or just whitespace
+        if not font_family or not font_family.strip():
+            inkex.errormsg("No font family provided. Using fallback: JetBrainsMono Nerd Font")
+            font_family = "JetBrainsMono Nerd Font"
+
+        # Get available system fonts
+        available_fonts = self.get_system_fonts()
+
+        # Check if provided font exists (case-sensitive)
+        if font_family in available_fonts:
+            return font_family
+
+        # Font not found - try fallback to JetBrainsMono Nerd Font
+        fallback_font = "JetBrainsMono Nerd Font"
+        if font_family != fallback_font:
+            # User specified a different font that wasn't found
+            if fallback_font in available_fonts:
+                inkex.errormsg(f"Font '{font_family}' not found. Using fallback: {fallback_font}")
+                return fallback_font
+
+        # Neither the requested font nor JetBrainsMono Nerd Font are available
+        raise inkex.AbortExtension(
+            f"ERROR: Font '{font_family}' not found in system.\n"
+            f"Please install 'JetBrainsMono Nerd Font' or specify a valid font family.\n"
+            f"Use the 'Show Fonts' tab to see available fonts."
+        )
 
     def get_char_name(self, char):
         """

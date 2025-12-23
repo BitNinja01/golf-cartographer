@@ -5,7 +5,7 @@
 
     <param name="notebook" type="notebook">
         <page name="prepare" gui-text="Prepare Glyphs">
-            <param name="font_family" type="string" gui-text="Font Family:">Arial</param>
+            <param name="font_family" type="string" gui-text="Font Family:">JetBrainsMono Nerd Font</param>
             <param name="font_style" type="optiongroup" appearance="combo" gui-text="Font Style:">
                 <option value="normal">Regular</option>
                 <option value="bold">Bold</option>

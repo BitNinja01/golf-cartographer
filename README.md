@@ -10,15 +10,17 @@
   <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
-**Easily create yardage books for your favorite courses using OpenStreetMap data in Inkscape**
+**Easily create golf yardage books using OpenStreetMap data in Inkscape**
 
 Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
+
+<!-- IMAGE OF FINAL YARDAGE BOOK -->
 
 ---
 
 ## What It Does
 
-Golf Cartographer's core is a series of 5 Inkscape tools that automate a complete yardage book workflow:
+At Golf Cartographer's core is a series of 5 Inkscape tools that automate a complete yardage book workflow:
 
 1. **Flatten SVG** - Organizes a raw OSM SVG export into structured groups based on color.
 2. **Group Hole** - Organize the elements of each hole into groups with terrain, greens, bunkers and paths/water. Run once for each hole.
@@ -64,7 +66,7 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 	1. **Linux**: `~/.config/inkscape/extensions/`
 	2. **macOS**: `~/Library/Application Support/org.inkscape.Inkscape/config/inkscape/extensions/`
 	3. **Windows**: `%APPDATA%\inkscape\extensions\`
-4. Copy the "golf-cartographer" folder into your inkscape extensions folder
+4. Copy the "golf-cartographer" folder into your inkscape extensions folder. You can copy "templates" there too, but it won't do anything.
 5. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools and a glyph library tool.
 <p align="center">
   <img src="docs/images/inkscape_01.png">
@@ -78,9 +80,6 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 ```
 Extensions > Golf Cartographer > 1. Flatten SVG
 ```
-<p align="center">
-  <img src="docs/images/gc_tool_1_01.png">
-</p>
 <p align="center">
   <img src="docs/images/gc_tool_1_02.png">
 </p>
@@ -125,9 +124,6 @@ Save the resulting document as an SVG, we'll need it in the next step.
 ```
 Extensions > Golf Cartographer > 3. Auto-Place Holes
 ```
-<p align="center">
-  <img src="docs/images/gc_tool_3_01.png">
-</p>
 
 1. Open ```tempate_yardage_book.svg``` from the GC templates folder
 2. Import the SVG file we saved in Step 2
@@ -186,7 +182,12 @@ Takes ~2-5 minutes total. Generates 20 PDFs, and combines them into 5:
 ```
 Extensions > Golf Cartographer > 0. Prepare Glyph Library
 ```
-
+<p align="center">
+  <img src="docs/images/gc_tool_6_01.png">
+</p>
+<p align="center">
+  <img src="docs/images/gc_tool_6_02.png">
+</p>
 The glyph library tool prepares custom fonts for use in hole labels. Run this **before Stage 4** if you want to use fonts other than the packaged [JetBrains Mono](https://www.jetbrains.com/lp/mono/) font.
 
 Use this before you run Add Hole Label. Only needs to be run once per font family.
@@ -197,6 +198,12 @@ Use this before you run Add Hole Label. Only needs to be run once per font famil
 	1. If want to see the available ones, switch to the "Show Fonts" tab and hit "Apply". You can then copy the name of the font you want, and use it on the first tab of this tool.
 3. Select the font style (Regular, Bold, Italic, Bold Italic)
 4. Click Apply
+5. Save the resulting SVG to the "glyph_libraries" folder inside the "golf-cartographer" inkscape addon directory
+6. Restart Inkscape
+
+<p align="center">
+  <img src="docs/images/gc_tool_6_03.png">
+</p>
 
 The tool creates glyph paths that Stage 4 can reference. The Add Hole Label tool will use default system fonts if no valid glyph library is entered, which will work fine for most yardage books.
 
