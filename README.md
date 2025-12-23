@@ -1,11 +1,10 @@
 <!-- PROJECT SHIELDS -->
-[![Release](https://img.shields.io/github/v/release/BitNinja01/golf-cartographer.svg?style=for-the-badge&color=lightgrey)](https://github.com/BitNinja01/golf-cartographer/releases)
-[![License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge&color=lightgrey)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
-[![Downloads](https://img.shields.io/github/downloads/BitNinja01/golf-cartographer/total.svg?style=for-the-badge&color=green)](https://github.com/BitNinja01/golf-cartographer/releases)
-[![Last Commit](https://img.shields.io/github/last-commit/BitNinja01/golf-cartographer.svg?style=for-the-badge&color=lightgrey)](https://github.com/BitNinja01/golf-cartographer/commits)
+[![Release](https://img.shields.io/github/v/release/BitNinja01/golf-cartographer.svg?style=for-the-badge&color=orange)](https://github.com/BitNinja01/golf-cartographer/releases)
+[![License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge&color=orange)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/BitNinja01/golf-cartographer/total.svg?style=for-the-badge&color=orange)](https://github.com/BitNinja01/golf-cartographer/releases)
 [![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
 [![Inkscape](https://img.shields.io/badge/Inkscape-1.4.2+-orange.svg?style=for-the-badge&logo=inkscape&logoColor=white)](https://inkscape.org/)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20|%20macOS%20|%20Windows-lightgrey.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20|%20macOS%20|%20Windows-orange.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
 
 ---
 <p align="center">
