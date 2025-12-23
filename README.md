@@ -15,6 +15,7 @@
 Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
 
 <!-- IMAGE OF FINAL YARDAGE BOOK -->
+<!-- IMAGE OF FINAL YARDAGE BOOK -->
 
 ---
 
@@ -211,7 +212,11 @@ The tool creates glyph paths that Stage 4 can reference. The Add Hole Label tool
 
 # Understanding the PDF Output
 
-The 20 narrow PDFs are strategically paired for a complete 18-hole booklet:
+Golf Cartographer exports yardage books through a three-step process that transforms 20 narrow pages into 5 print-ready booklets.
+
+## Step 1: Export 20 Narrow PDFs (4.25" × 14" each)
+
+Each narrow PDF contains a hole layout (top) paired with a green detail (bottom). The cross-pairing strategy means most holes are paired with a different hole's green:
 
 | Page | Layout | Page | Layout |
 |------|--------|------|--------|
@@ -226,7 +231,41 @@ The 20 narrow PDFs are strategically paired for a complete 18-hole booklet:
 | 9 | Hole 1 + Green 17 | 19 | Hole 18 + Notes |
 | 10 | Scorecard + Green 18 | 20 | Back + Cover |
 
-Each hole gets paired with a different hole's green (except for hole 9 since it's in the middle).
+These 20 narrow PDFs are saved to the `exports/` folder (unless "Combine into Booklets" is enabled, in which case they're automatically cleaned up).
+
+## Step 2: Combine into Booklets (5 Saddle-Stitch PDFs)
+
+The 20 narrow pages are combined into 5 booklet PDFs, each containing 2 pages designed for saddle-stitch binding:
+
+- **yardage_book_01.pdf**
+	- Page 1
+		- 9 + 8
+	- Page 2
+		- 10 + 11
+- **yardage_book_02.pdf**
+	- Page 1
+		- 7 + 6
+	- Page 2
+		- 12 + 13
+- **yardage_book_03.pdf**
+	- Page 1
+		- 5 + 4
+	- Page 2
+		- 14 + 15
+- **yardage_book_04.pdf**
+	- Page 1
+		- 3 + 2
+	- Page 2
+		- 16 + 17
+- **yardage_book_05.pdf**
+	- Page 1
+		- 1 + yardage chart
+	- Page 2
+		- 18 + back
+
+These final booklets are saved to the `print/` folder and are ready for printing. When printing these, print each file 2-sided, and flip them along the short side.
+
+## Step 3: Assemble the Final Book
 
 ---
 
