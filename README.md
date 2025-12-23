@@ -1,9 +1,49 @@
-<!-- PROJECT SHIELDS -->
+<!-- PROJECT SHIELDS - COMPREHENSIVE EXAMPLES -->
+
+<!-- ========== ACTIVITY & POPULARITY ========== -->
 [![Contributors](https://img.shields.io/github/contributors/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/graphs/contributors)
-[![Forks](https://img.shields.io/github/forks/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/network/members)
 [![Stargazers](https://img.shields.io/github/stars/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/stargazers)
-[![Issues](https://img.shields.io/github/issues/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/issues)
+
+<!-- ========== VERSION & RELEASE ========== -->
+[![Release](https://img.shields.io/github/v/release/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/releases)
+[![Downloads](https://img.shields.io/github/downloads/BitNinja01/golf-cartographer/total.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/releases)
+
+<!-- ========== CODE METRICS ========== -->
+[![Code Size](https://img.shields.io/github/languages/code-size/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+[![Repo Size](https://img.shields.io/github/repo-size/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+
+<!-- ========== ACTIVITY METRICS ========== -->
+[![Last Commit](https://img.shields.io/github/last-commit/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/commits)
+
+<!-- ========== BRANCH & BUILD ========== -->
+[![Default Branch](https://img.shields.io/badge/branch-main-blue.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/tree/main)
+[![Commits Since Latest](https://img.shields.io/github/commits-since/BitNinja01/golf-cartographer/latest.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/commits)
+
+<!-- ========== LICENSE ========== -->
 [![MIT License](https://img.shields.io/github/license/BitNinja01/golf-cartographer.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/blob/main/LICENSE)
+
+<!-- ========== CUSTOM TECHNOLOGY BADGES ========== -->
+[![Inkscape](https://img.shields.io/badge/inkscape-1.4.2+-orange.svg?style=for-the-badge&logo=inkscape&logoColor=white)](https://inkscape.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+
+<!-- ========== STATUS & COMMUNITY ========== -->
+[![Status](https://img.shields.io/badge/Status-Active-green.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+[![Maintained](https://img.shields.io/badge/Maintained-Yes-green.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+[![Made With Love](https://img.shields.io/badge/Made%20with-❤-red.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](https://github.com/BitNinja01/golf-cartographer/pulls)
+
+<!-- ========== COLOR VARIATIONS ========== -->
+
+![Blue](https://img.shields.io/badge/Custom-Blue-blue.svg?style=for-the-badge)
+![Green](https://img.shields.io/badge/Custom-Green-green.svg?style=for-the-badge)
+![Red](https://img.shields.io/badge/Custom-Red-red.svg?style=for-the-badge)
+![Orange](https://img.shields.io/badge/Custom-Orange-orange.svg?style=for-the-badge)
+![Yellow](https://img.shields.io/badge/Custom-Yellow-yellow.svg?style=for-the-badge)
+![Purple](https://img.shields.io/badge/Custom-Purple-purple.svg?style=for-the-badge)
+![Pink](https://img.shields.io/badge/Custom-Pink-ff69b4.svg?style=for-the-badge)
+![Gray](https://img.shields.io/badge/Custom-Gray-gray.svg?style=for-the-badge)
+![Black](https://img.shields.io/badge/Custom-Black-black.svg?style=for-the-badge)
+![White](https://img.shields.io/badge/Custom-White-white.svg?style=for-the-badge)
 
 ---
 <p align="center">
