@@ -79,14 +79,13 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 ```
 Extensions > Golf Cartographer > 1. Flatten SVG
 ```
-This creates organized element groups based on color color (greens, fairways, bunkers, water, trees, paths).
-
 <p align="center">
   <img src="docs/images/gc_tool_1_01.png">
 </p>
 <p align="center">
   <img src="docs/images/gc_tool_1_02.png">
 </p>
+
 1. Open the OSM SVG in Inkscape
 2. Run the tool
 
@@ -154,7 +153,7 @@ Extensions > Golf Cartographer > 4. Add Hole Label
    - Tee box names and yardages (up to 6 tees)
 3. Customize fonts if desired
 
-Takes ~5-10 seconds per hole. Each adds a circle with the hole number, par number, and tee names/yardages. GC only comes packaged with the [Jetbrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the "Prepare Glyph Library" tool that comes with GC.
+Takes ~5-10 seconds per hole. Each adds a circle with the hole number, par number, and tee names/yardages. GC only comes packaged with the [JetBrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the [Prepare Glyph Library](#optional-prepare-glyph-library) tool that comes with GC.
 
 If you're a nerd wondering why we need glyph libraries at all - Inkscape's Python API is kind of arcane, and doesn't play well with bounding box math combined with text objects. So yeah. Glyph libraries.
 
