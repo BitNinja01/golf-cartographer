@@ -155,7 +155,7 @@ Extensions > Golf Cartographer > 4. Add Hole Label
 
 Takes ~5-10 seconds per hole. Each adds a circle with the hole number, par number, and tee names/yardages. GC only comes packaged with the [JetBrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the [Prepare Glyph Library](#optional-prepare-glyph-library) tool that comes with GC.
 
-If you're a nerd wondering why we need glyph libraries at all - Inkscape's Python API is kind of arcane, and doesn't play well with bounding box math combined with text objects. So yeah. Glyph libraries.
+If you're a nerd wondering why we need glyph libraries at all - Inkscape's Python API is kind of arcane, and like it when you run bounding box math on text objects. So yeah. Glyph libraries.
 
 #### Step 5: Export PDFs
 ```
