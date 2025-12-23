@@ -11,23 +11,21 @@
   <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
-**Automate golf yardage book creation from OpenStreetMap data in Inkscape**
+**Easily create golf yardage books for your favorite courses from OpenStreetMap data in Inkscape**
 
-Transform raw OSM exports into high-quality, print-ready 20-page yardage books through a five-stage pipeline. Golf Cartographer was born from my desire to reduce the number of hours I was spending creating yardage books manually in Inkscape, along with wanting to learn how to use Claude Code. No more hours of manual layer organization, positioning, and PDF exports/combinations.
-
-Before GC, I was spending upwards of **10-15 on/off hours** a week structuring this data manually, getting it formatted and printed, and stitching the whole thing together. GC reduces this to **a little over an hour** for a whole yardage book.
+Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
 
 ---
 
 ## What It Does
 
-Golf Cartographer is a series of 5 Inkscape tools that automate a complete yardage book workflow:
+Golf Cartographer's core is a series of 5 Inkscape tools that automate a complete yardage book workflow:
 
-1. **Flatten SVG** - Organize a raw OSM svg export into structured element groups by color
-2. **Group Hole** (×18) - Organize elements into per-hole groups with terrain, greens, bunkers and paths/water
-3. **Auto-Place Holes** - Position holes and greens automatically on the pages
-4. **Add Hole Label** (×18) - Add hole numbers, par numbers, and tee box yardages to each page
-5. **Export PDFs** - Generate 20 print-ready PDFs in booklet format, and combine them into 5 saddle stitch ready PDFs if needed 
+1. **Flatten SVG** - Organizes a raw OSM SVG export into structured groups based on color.
+2. **Group Hole** - Organize the elements of each hole into groups with terrain, greens, bunkers and paths/water. Run once for each hole.
+3. **Auto-Place Holes** - Automagically positions holes and greens on the top and bottom pages. 
+4. **Add Hole Label** - Adds hole numbers, par numbers, and tee box yardages to each page. Run once for each hole.
+5. **Export PDFs** - Generates 20 print-ready PDFs in booklet format, and combines them into 5 saddle stitch ready PDFs.
 
 Result: A complete yardage book ready for saddle-stitch printing, all from a single OSM export, and with minimal manual work.
 
@@ -35,38 +33,40 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 ## Requirements
 
-- **Inkscape 1.4.2 or later** (required - earlier versions have incompatible APIs)
-- **Python 3.7+** (bundled with modern Inkscape)
-- **OpenStreetMap SVG export** of your golf course
-	- https://www.openstreetmap.org
-	- **Tip:** Set the 'scale' value in the OSM download dialogue to something like '1000'. This will set the value to the lowest available one, which will give us more detail to work with.
-- The scorecard of your golf course
+- [**Inkscape 1.4.2 or later**](https://inkscape.org/) 
+	- Required - earlier versions have incompatible APIs
+- [**Python 3.7+**](https://www.python.org/downloads/)
+	- This is bundled with modern Inkscape, so you shouldn't need to install it
+- [**OpenStreetMap**](https://www.openstreetmap.org)
+	- Locate your golf course on the map
+	- On the right side of the page, find the "Share" tab
+	- Set the "Format" to SVG
+	- Set the "Scale" value as low as it will go
+	- Use "Set custom dimensions" and draw a square around your course
+	- Download the SVG
+- The scorecard (with teebox yardages) of your golf course
 
-OSM website:
+**OSM website:**
 <p align="center">
   <img src="docs/images/osm_example_01.png">
 </p>
 
-OSM export in Inkscape:
+**SVG opened in Inkscape:**
 <p align="center">
   <img src="docs/images/osm_example_02.png">
 </p>
 ---
+
 ## Installation
 
-1. **Locate your Inkscape extensions folder**:
-   - **Linux**: `~/.config/inkscape/extensions/`
-   - **macOS**: `~/Library/Application Support/org.inkscape.Inkscape/config/inkscape/extensions/`
-   - **Windows**: `%APPDATA%\inkscape\extensions\`
-
-2. **Copy extension files**:
-   ```bash
-   cp golf-cartographer/* ~/.config/inkscape/extensions/
-   ```
-
-3. **Restart Inkscape**
-
-4. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools and a glyph library tool.
+1. Download the [latest GC release](https://github.com/BitNinja01/golf-cartographer/releases)
+2. Unzip the downloaded file
+3. **Locate your Inkscape extensions folder**:
+	1. **Linux**: `~/.config/inkscape/extensions/`
+	2. **macOS**: `~/Library/Application Support/org.inkscape.Inkscape/config/inkscape/extensions/`
+	3. **Windows**: `%APPDATA%\inkscape\extensions\`
+4. Copy the "golf-cartographer" folder into your inkscape extensions folder
+5. **Verify**: Open Inkscape and check `Extensions > Golf Cartographer` - you should see 5 numbered tools and a glyph library tool.
 <p align="center">
   <img src="docs/images/inkscape_01.png">
 </p>
@@ -75,13 +75,11 @@ OSM export in Inkscape:
 
 ## Quick Start
 
-### The Five-Stage Workflow
-
 #### Step 1: Flatten SVG
 ```
 Extensions > Golf Cartographer > 1. Flatten SVG
 ```
-Processes raw OSM data. Takes ~5-15 seconds. Creates organized element groups by color (greens, fairways, bunkers, water, trees, paths).
+This creates organized element groups based on color color (greens, fairways, bunkers, water, trees, paths).
 
 <p align="center">
   <img src="docs/images/gc_tool_1_01.png">
@@ -89,84 +87,85 @@ Processes raw OSM data. Takes ~5-15 seconds. Creates organized element groups by
 <p align="center">
   <img src="docs/images/gc_tool_1_02.png">
 </p>
-After running this tool, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next tool runs.
+1. Open the OSM SVG in Inkscape
+2. Run the tool
 
-A current limitation of this tool - the hole numbers will be caught in the cleaning process. I recommend keeping OSM open while you group the holes.
+This will strip out any "fluff" we don't need. A current limitation - the hole numbers will be caught in the cleaning process. I recommend keeping OSM open while you group the holes in Step 2.
+
+After running, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next steps of the process.
 
 #### Step 2: Group Hole
 ```
 Extensions > Golf Cartographer > 2. Group Hole
 ```
-For each hole 1-18:
-1. Select all elements belonging to that hole
-2. Run the tool
-3. Enter hole number (1-18) in dialog
-
-Takes ~3-8 seconds per hole. Each creates a `hole_N` group with terrain and green elements organized separately.
-
 <p align="center">
   <img src="docs/images/gc_tool_2_01.png">
 </p>
 
-<!-- SCREENSHOT: CRITICAL - Hole Selection & Dialog
-     Show: Inkscape with hole elements selected (highlighted) + Group Hole dialog with hole number input field
-     Why: "Select all elements belonging to that hole" is ambiguous - shows what proper selection looks like -->
+1. (Optional) Prep the green yardage lines
+	1. Import the ```template_yardage_lines.svg``` found in the downloaded ```templates``` folder
+		1. This template represents 100, 125, and 150 yards from the center of each green. We need to scale it accordingly.
+	2. Open [Google Earth](https://earth.google.com)
+		1. Find you're golf course
+		2. Find 2 elements that are roughly 100 yards apart (2 bunkers, a green and a bunker, etc)
+		3. Place the center of the ```template_yardage_lines.svg``` at one of these points
+		4. Scale it until the inner-most circle crosses your second reference point
+		5. Once done, copy the name of this yardage lines group and then hide it
+2. Run this tool once for each hole:
+	1. Open the tool
+	2. Select all elements belonging to that hole (fairway, green, and bunkers)
+	3. Enter hole number (1-18) in dialog
+	4. (Optional) Paste the yardage lines group name into this dialogue
+	5. Run the tool
 
-<!-- SCREENSHOT: HIGH - Hole Grouping Layers Panel
-     Show: Inkscape layers panel showing properly grouped hole (hole_N with terrain/green subelements in hierarchy)
-     Why: Shows actual layer structure users should verify after Stage 2
-     Reference: examples/course_stage_2.svg layers panel -->
+Takes ~3-8 seconds per hole. Each run creates a `hole_XX` group with terrain, green, and bunker elements organized separately. It will also place the yardage lines group at the center of the green, giving you a visual indicator of how far out you are from each hole while you play.
 
-#### Stage 3: Auto-Place Holes
+Save the resulting document as an SVG, we'll need it in the next step.
+
+#### Step 3: Auto-Place Holes
 ```
 Extensions > Golf Cartographer > 3. Auto-Place Holes
 ```
-No parameters needed. Runs once. Takes ~30-60 seconds.
-
-Automatically:
-- Positions all 18 holes in page "top" area (3.736" × 6.756")
-- Rotates holes to face greens for optimal viewing
-- Extracts and scales greens to fit "bottom" area (3.75" × 3.75")
-- Applies 10% margins around holes, 20% around green details
 <p align="center">
   <img src="docs/images/gc_tool_3_01.png">
 </p>
 
-<!-- SCREENSHOT: CRITICAL - Stage 3 Output
-     Show: Inkscape canvas after Stage 3 with holes positioned in "top" area and greens scaled in "bottom" area with visible page boundaries
-     Why: Complex transformation hard to visualize - shows actual layout positioning and top/bottom division
-     Reference: examples/course_stage_3.svg with page boundaries visible -->
+1. Open ```tempate_yardage_book.svg``` from the GC templates folder
+2. Import the SVG file we saved in Step 2
+3. Run the tool
 
-#### Stage 4: Add Hole Label (Run 18 times)
+This will automatically:
+- Position all 18 holes in the "top" area
+- Rotate holes so that the greens are closest to the top of the page
+- Extract and scale greens to fit inside the "bottom" grid
+
+#### Step 4: Add Hole Label
 ```
 Extensions > Golf Cartographer > 4. Add Hole Label
 ```
-For each hole 1-18:
-1. Run the tool
-2. Enter:
-   - Hole number (1-18)
-   - Par (3-6)
-   - Tee box names and yardages (up to 6 tees)
-3. Customize fonts if desired
-
-Takes ~3-5 seconds per hole. Each adds a circle with hole number, par text, and tee yardages. Supports custom fonts from glyph library.
 <p align="center">
   <img src="docs/images/gc_tool_4_01.png">
 </p>
 
-<!-- SCREENSHOT: CRITICAL - Add Hole Label Dialog
-     Show: Add Hole Label dialog showing all input fields (hole number, par, tee box names, yardages)
-     Why: Users need to know what information to prepare before running this stage -->
+1. Run this tool once for each hole
+2. Enter:
+   - Hole number
+   - Par number
+   - Tee box names and yardages (up to 6 tees)
+3. Customize fonts if desired
 
-<!-- SCREENSHOT: HIGH - Hole Label Result
-     Show: Close-up of a finished hole label showing circle, hole number, par, and tee box yardages
-     Why: Users verify Stage 4 worked correctly by seeing expected visual result
-     Reference: examples/course_stage_4.svg zoomed on hole label -->
+Takes ~5-10 seconds per hole. Each adds a circle with the hole number, par number, and tee names/yardages. GC only comes packaged with the [Jetbrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the "Prepare Glyph Library" tool that comes with GC.
 
-#### Stage 5: Export PDFs
+If you're a nerd wondering why we need glyph libraries at all - Inkscape's Python API is kind of arcane, and doesn't play well with bounding box math combined with text objects. So yeah. Glyph libraries.
+
+#### Step 5: Export PDFs
 ```
 Extensions > Golf Cartographer > 5. Export PDFs
 ```
+<p align="center">
+  <img src="docs/images/gc_tool_5_01.png">
+</p>
+
 Parameters:
 - **Output Directory**: Where to save PDFs (default: Desktop)
 - **Filename Prefix**: Prefix for all files (default: `yardage_book_`)
@@ -176,13 +175,6 @@ Takes ~2-5 minutes total. Generates 20 PDFs:
 - **Narrow PDFs** (4.25" × 14" each): 20 individual hole pages with strategic cross-pairing
 - **Wide PDFs** (8.5" × 14" each): 10 pages with pairs side-by-side
 - **Booklet PDFs** (5 files): Print-ready saddle-stitch booklets (2 pages each)
-<p align="center">
-  <img src="docs/images/gc_tool_5_01.png">
-</p>
-
-<!-- SCREENSHOT: HIGH - Export PDFs Dialog
-     Show: Export PDFs dialog showing three input fields (Output Directory, Filename Prefix, Combine into Booklets checkbox)
-     Why: Users need to know what parameters to set before running the longest stage -->
 
 **Print Instructions**:
 1. Print each booklet double-sided (flip on short edge)
@@ -193,27 +185,23 @@ Takes ~2-5 minutes total. Generates 20 PDFs:
      Show: Illustration showing physical assembly steps - 5 booklets stacked (05 outside), folding, stapling along center
      Why: Saddle-stitch printing instructions hard to visualize - reduces printing errors and wasted paper -->
 
-#### Optional: Prepare Glyph Library (Before Stage 4)
+#### Optional: Prepare Glyph Library
 ```
 Extensions > Golf Cartographer > 0. Prepare Glyph Library
 ```
 
-The glyph library tool prepares custom fonts for use in hole labels. Run this **before Stage 4** if Claude wants to use fonts other than the default system fonts.
+The glyph library tool prepares custom fonts for use in hole labels. Run this **before Stage 4** if you want to use fonts other than the packaged [JetBrains Mono](https://www.jetbrains.com/lp/mono/) font.
 
-**When to use**:
-- Before running Stage 4 (Add Hole Label)
-- When Claude wants custom fonts for hole numbers, par text, or tee yardages
-- Only needs to be run once per font family
+Use this before you run Add Hole Label. Only needs to be run once per font family.
 
 **How to use**:
-1. Run the tool from Extensions menu
+1. Run the tool from Extensions menu in a blank document
 2. Enter the font family name (e.g., "Arial", "Times New Roman")
+	1. If want to see the available ones, switch to the "Show Fonts" tab and hit "Apply". You can then copy the name of the font you want, and use it on the first tab of this tool.
 3. Select the font style (Regular, Bold, Italic, Bold Italic)
 4. Click Apply
 
-The tool creates glyph paths that Stage 4 can reference. If Claude doesn't run this tool, Stage 4 will use default system fonts which work fine for most yardage books.
-
-**Tip**: To see all available fonts on the system, switch to the "Show Fonts" tab and click Apply. This lists every font Claude can use with the glyph library.
+The tool creates glyph paths that Stage 4 can reference. The Add Hole Label tool will use default system fonts if no valid glyph library is entered, which will work fine for most yardage books.
 
 ---
 
@@ -236,25 +224,13 @@ The 20 narrow PDFs are strategically paired for a complete 18-hole booklet:
 
 Each hole gets paired with a different hole's green for strategic mid-round reference (hole 9 appears twice as the turning point).
 
-<!-- SCREENSHOT: HIGH - PDF Sample Pages
-     Show: 2-3 sample narrow PDF pages side-by-side (4.25" × 14" format) with hole layout on top and green detail on bottom, clearly labeled
-     Why: Users can't visualize cross-paired narrow PDFs - seeing real examples helps understand workflow value
-     Reference: examples/exported_pdfs/ sample pages -->
-
 ---
 
 ## Configuration
 
-All measurements use **inches**. Verify document units in Inkscape before running.
-
-<!-- SCREENSHOT: CRITICAL - Document Units Dialog
-     Show: Inkscape's File > Document Properties dialog with Units dropdown clearly showing "in" (inches) selected
-     Why: Critical prerequisite mentioned multiple times - shows exactly where and how to set this
-     Prevents positioning failures -->
-
 ### Adjusting Hole Placement
 
-Edit `auto_place_holes.py` if you need custom positioning:
+Edit `auto_place_holes.py` if you need custom positioning for the auto place tool:
 
 ```python
 # Top area (hole layouts)
@@ -288,47 +264,21 @@ If elements aren't categorized correctly, OSM colors may differ from defaults. A
 - Verify both `.py` and `.inx` files copied to extensions folder
 - Restart Inkscape completely
 - Check Inkscape version is 1.4.2+
-
 ### ImportError when running tool
 - All utility files must be present: `transform_utils.py`, `geometry_utils.py`, `color_utils.py`
 - Verify Python 3.7+ is available
-
 ### Color detection not working
 - Check element colors match OSM palette
 - Verify elements have fill or stroke colors set
 - Manually adjust colors in Inkscape if needed, then retry
-
 ### Holes positioned incorrectly
-- Verify document units set to inches (File > Document Properties > Units)
-- Ensure holes properly grouped in Stage 2 with both terrain and greens
-- Check BOUNDING_BOX values match your template
-
+- Ensure holes were properly grouped in Stage 2 with both terrain and greens
+- Be sure to use the ```template_yardage_book.svg``` file when using these tools
 ### PDFs fail to export
-- All holes must be named `hole_1` through `hole_18` (Stage 2 creates these)
+- All holes must be named `hole_1` through `hole_18`
 - Output directory must exist and be writable
 - Check no holes are locked in Inkscape
 - Verify Inkscape is accessible from command line (for PDF export)
-
----
-
-## File Structure
-
-```
-golf-cartographer/
-├── flatten_svg.inx / .py          # Stage 1
-├── group_hole.inx / .py            # Stage 2
-├── auto_place_holes.inx / .py      # Stage 3
-├── add_hole_label.inx / .py        # Stage 4
-├── export_pdfs.inx / .py           # Stage 5
-├── transform_utils.py              # Shared transform utilities
-├── geometry_utils.py               # Shared geometry utilities
-├── color_utils.py                  # Color detection and matching
-├── glyph_library.py                # Font/glyph utilities
-├── prepare_glyph_library.inx / .py # Utility for glyph setup
-└── python_libraries/               # Bundled dependencies
-    ├── pypdf/                      # PDF manipulation (v6.4.2)
-    └── typing_extensions.py        # Python compatibility
-```
 
 ---
 
@@ -337,15 +287,6 @@ golf-cartographer/
 Contributions welcome! Check [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md) for ideas or come up with your own :)
 
 To contribute:
-1. Read [FUTURE_ENHANCEMENTS.md](docs/FUTURE_ENHANCEMENTS.md)
-2. Add type hints and docstrings
-3. Test manually in Inkscape
-4. Submit PR with clear description and example input and output SVGs
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details
-
-Copyright (c) 2025 BitNinja01
+1. Add type hints and docstrings
+2. Test manually in Inkscape
+3. Submit PR with clear description and example input and output SVGs
