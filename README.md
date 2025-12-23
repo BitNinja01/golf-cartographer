@@ -10,7 +10,7 @@
   <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
-**Easily create golf yardage books for your favorite courses from OpenStreetMap data in Inkscape**
+**Easily create yardage books for your favorite courses using OpenStreetMap data in Inkscape**
 
 Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
 
@@ -43,7 +43,7 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 	- Set the "Scale" value as low as it will go
 	- Use "Set custom dimensions" and draw a square around your course
 	- Download the SVG
-- The scorecard (with teebox yardages) of your golf course
+- Your golf course's scorecard (with teebox yardages)
 
 **OSM website:**
 <p align="center">
@@ -58,7 +58,7 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 ## Installation
 
-1. Download the [latest GC release](https://github.com/BitNinja01/golf-cartographer/releases)
+1. Download the [latest Golf Cartographer release](https://github.com/BitNinja01/golf-cartographer/releases)
 2. Unzip the downloaded file
 3. **Locate your Inkscape extensions folder**:
 	1. **Linux**: `~/.config/inkscape/extensions/`
@@ -88,9 +88,9 @@ Extensions > Golf Cartographer > 1. Flatten SVG
 1. Open the OSM SVG in Inkscape
 2. Run the tool
 
-This will strip out any "fluff" we don't need. A current limitation - the hole numbers will be caught in the cleaning process. I recommend keeping OSM open while you group the holes in Step 2.
+This will strip out any "fluff" we don't need. A current limitation - any hole numbers will be caught in the cleaning process. I recommend keeping OSM open while you group the holes in Step 2.
 
-After running, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next steps of the process.
+After running, I recommend deleting any practice greens/driving range objects to make the document cleaner. If you want to keep them, they can be placed in the 'other' folder and they will be kept through the next steps of the process. I also usually delete the "mapping_lines" group inside the "other" group after Step 2.
 
 #### Step 2: Group Hole
 ```
@@ -105,7 +105,7 @@ Extensions > Golf Cartographer > 2. Group Hole
 		1. This template represents 100, 125, and 150 yards from the center of each green. We need to scale it accordingly.
 	2. Open [Google Earth](https://earth.google.com)
 		1. Find you're golf course
-		2. Find 2 elements that are roughly 100 yards apart (2 bunkers, a green and a bunker, etc)
+		2. Using the measure tool, find 2 elements that are roughly 100 yards apart (2 bunkers, a green and a bunker, etc)
 		3. Place the center of the ```template_yardage_lines.svg``` at one of these points
 		4. Scale it until the inner-most circle crosses your second reference point
 		5. Once done, copy the name of this yardage lines group and then hide it
@@ -115,8 +115,9 @@ Extensions > Golf Cartographer > 2. Group Hole
 	3. Enter hole number (1-18) in dialog
 	4. (Optional) Paste the yardage lines group name into this dialogue
 	5. Run the tool
+3. Once done running all 18 times, delete the yardage lines group
 
-Takes ~3-8 seconds per hole. Each run creates a `hole_XX` group with terrain, green, and bunker elements organized separately. It will also place the yardage lines group at the center of the green, giving you a visual indicator of how far out you are from each hole while you play.
+Takes ~3-8 seconds per hole. Each run creates a `hole_XX` group with terrain, green, and bunker elements organized separately. It will also place the yardage lines group at the center of the green, giving you a visual indicator of how far out you are from each green while you play.
 
 Save the resulting document as an SVG, we'll need it in the next step.
 
@@ -133,9 +134,9 @@ Extensions > Golf Cartographer > 3. Auto-Place Holes
 3. Run the tool
 
 This will automatically:
-- Position all 18 holes in the "top" area
 - Rotate holes so that the greens are closest to the top of the page
-- Extract and scale greens to fit inside the "bottom" grid
+- Position and scale all 18 holes into the top page
+- Extract and scale a copy of each green, and fit each one inside the bottom page grid
 
 #### Step 4: Add Hole Label
 ```
@@ -150,11 +151,12 @@ Extensions > Golf Cartographer > 4. Add Hole Label
    - Hole number
    - Par number
    - Tee box names and yardages (up to 6 tees)
-3. Customize fonts if desired
+   - Any tees you don't need - set to '0' and they will be ignored
+1. Customize fonts if desired
 
-Takes ~5-10 seconds per hole. Each adds a circle with the hole number, par number, and tee names/yardages. GC only comes packaged with the [JetBrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the [Prepare Glyph Library](#optional-prepare-glyph-library) tool that comes with GC.
+Takes ~5-10 seconds per hole. Adds a circle with the hole number, par number, and tee names/yardages each time it's run. GC only comes packaged with the [JetBrians Mono](https://www.jetbrains.com/lp/mono/) font by default, but you can make your own glyph libraries using the [Prepare Glyph Library](#optional-prepare-glyph-library) tool that comes with GC.
 
-If you're a nerd wondering why we need glyph libraries at all - Inkscape's Python API is kind of arcane, and doesn't like it when you run bounding box math on text objects. So yeah. Glyph libraries.
+If you're a nerd wondering why we need glyph libraries for system fonts at all - Inkscape's Python API is kind of arcane, and doesn't like it when you run bounding box math on text objects. So yeah. Glyph libraries.
 
 #### Step 5: Export PDFs
 ```
@@ -169,19 +171,16 @@ Parameters:
 - **Filename Prefix**: Prefix for all files (default: `yardage_book_`)
 - **Combine into Booklets**: Enable saddle-stitch format (default: enabled)
 
-Takes ~2-5 minutes total. Generates 20 PDFs:
+Takes ~2-5 minutes total. Generates 20 PDFs, and combines them into 5:
 - **Narrow PDFs** (4.25" × 14" each): 20 individual hole pages with strategic cross-pairing
-- **Wide PDFs** (8.5" × 14" each): 10 pages with pairs side-by-side
-- **Booklet PDFs** (5 files): Print-ready saddle-stitch booklets (2 pages each)
+- **Booklet PDFs** (8.5" × 14"): Print-ready saddle-stitch booklets - 2 pages each
 
 **Print Instructions**:
 1. Print each booklet double-sided (flip on short edge)
-2. Stack in order (booklet 5 outside, booklet 1 innermost)
-3. Fold in half and staple along center
-
-<!-- SCREENSHOT: HIGH - Booklet Assembly Diagram
-     Show: Illustration showing physical assembly steps - 5 booklets stacked (05 outside), folding, stapling along center
-     Why: Saddle-stitch printing instructions hard to visualize - reduces printing errors and wasted paper -->
+2. Fold each of the 5 pages in half
+3. Stack in order
+4. Trim borders using a ruler and craft knife
+5. 
 
 #### Optional: Prepare Glyph Library
 ```
