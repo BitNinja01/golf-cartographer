@@ -93,13 +93,11 @@ class FlattenSVG(inkex.EffectExtension):
 
             # Categorize element using shared color utilities
             category = categorize_element_by_color(element)
-            is_path = False
 
             if category == "mapping_line":
                 mapping_lines_group.append(element)
             elif category == "path_line":
                 paths_group.append(element)
-                is_path = True  # Don't apply stroke to paths
             elif category == "green":
                 greens_group.append(element)
             elif category == "fairway":
@@ -114,10 +112,6 @@ class FlattenSVG(inkex.EffectExtension):
                 # Mark element for deletion (uncategorized)
                 elements_to_delete.append(element)
                 continue
-
-            # Apply 1px stroke to all categorized elements except paths
-            if not is_path:
-                self._apply_stroke(element)
 
         # Delete uncategorized elements
         for element in elements_to_delete:
@@ -190,20 +184,6 @@ class FlattenSVG(inkex.EffectExtension):
             elif isinstance(child, (inkex.PathElement, inkex.ShapeElement)):
                 # Add element with its accumulated transform
                 elements_list.append((child, accumulated_transform))
-
-    def _apply_stroke(self, element: BaseElement) -> None:
-        """
-        Apply 1px black stroke to element for visual clarity.
-
-        Args:
-            element: SVG element to apply stroke to
-        """
-        if element.style is None:
-            element.style = inkex.Style()
-
-        element.style['stroke'] = '#000000'        # Black stroke
-        element.style['stroke-width'] = '1px'      # 1 pixel width
-        element.style['stroke-opacity'] = '1'      # Full opacity
 
     def _get_canvas_bounds(self) -> CanvasBounds:
         """

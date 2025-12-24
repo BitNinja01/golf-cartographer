@@ -838,13 +838,13 @@ class AddHoleLabel(inkex.EffectExtension):
             radius_uu: Circle radius in user units
 
         Returns:
-            Circle element with 0.5px black stroke
+            Circle element with 0.125mm black stroke (half of standard 0.25mm)
         """
         circle = Circle(cx=str(cx_uu), cy=str(cy_uu), r=str(radius_uu))
         circle.style = Style({
             'fill': 'none',
             'stroke': '#000000',
-            'stroke-width': '0.5px'  # 50% of original 1px stroke
+            'stroke-width': '0.125mm'  # Half of standard 0.25mm stroke
         })
         return circle
 

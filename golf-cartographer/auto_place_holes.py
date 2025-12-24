@@ -38,7 +38,6 @@ from transform_utils import (
     SimpleBoundingBox,
     get_cumulative_scale,
     set_stroke_recursive,
-    apply_stroke_compensation,
     measure_elements_via_temp_group,
 )
 from geometry_utils import (
@@ -152,39 +151,6 @@ class AutoPlaceHoles(inkex.EffectExtension):
                 hole_group.remove(other_group)
                 hole_group.append(other_group)
 
-        # Set stroke width on all terrain elements
-        for hole_num in range(1, 19):
-            hole_id = f"hole_{hole_num:02d}"
-            hole_group = self._find_hole_group(root, hole_id)
-
-            if hole_group is None:
-                continue
-
-            green_id = f"green_{hole_num:02d}"
-
-            # Calculate cumulative scale for stroke compensation
-            cumulative_scale = get_cumulative_scale(hole_group)
-
-            # Target rendered stroke: 0.25mm, converted to user units
-            TARGET_STROKE_MM = 0.25
-            target_stroke_uu = self.svg.unittouu(f'{TARGET_STROKE_MM}mm')
-            compensated_stroke_uu = target_stroke_uu / cumulative_scale if cumulative_scale > 0 else target_stroke_uu
-
-            for child in hole_group:
-                child_id = child.get('id')
-                should_set_stroke = False
-
-                if child_id == green_id:
-                    should_set_stroke = True
-
-                if isinstance(child, Group):
-                    label = child.get(inkex.addNS('label', 'inkscape'))
-                    if label and label.lower() in ('fairways', 'bunkers', 'other'):
-                        should_set_stroke = True
-
-                if should_set_stroke:
-                    set_stroke_recursive(child, str(compensated_stroke_uu))
-
         # ==== Stage 4: Scale greens in "bottom" area ====
 
         # Find bottom group
@@ -231,6 +197,120 @@ class AutoPlaceHoles(inkex.EffectExtension):
                     greens_processed += 1
                 else:
                     logger.debug("Hole %02d: green element not found for scaling", hole_num)
+
+        # ==== Stage 5: Apply strokes to all terrain elements ====
+        # Applied after hole positioning and green scaling to ensure consistency
+        # Using full scale compensation (no vector-effect) for all elements
+        TARGET_STROKE_MM = 0.25
+
+        # Discover the correction factor by testing on a representative element
+        # This allows the factor to work for any course regardless of scale
+        CORRECTION_FACTOR = None
+        test_element = None
+
+        # Find a test element (first hole's fairway group)
+        for hole_num in range(1, 19):
+            hole_id = f"hole_{hole_num:02d}"
+            hole_group = self._find_hole_group(root, hole_id)
+            if hole_group is not None:
+                for child in hole_group:
+                    if isinstance(child, Group):
+                        label = child.get(inkex.addNS('label', 'inkscape'))
+                        if label and label.lower() == 'fairways':
+                            test_element = child
+                            break
+            if test_element is not None:
+                break
+
+        # Calculate correction factor from test element
+        if test_element is not None:
+            # Apply compensation to test element
+            cumulative_scale = get_cumulative_scale(test_element)
+            if cumulative_scale <= 0:
+                cumulative_scale = 1.0
+            compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
+            set_stroke_recursive(test_element, compensated_stroke_mm)
+
+            # Read back what stroke-width was actually set
+            # Find first shape element to read stroke from
+            measured_stroke = None
+            for descendant in test_element.iter():
+                local_tag = descendant.tag.split('}')[-1] if '}' in descendant.tag else descendant.tag
+                if local_tag in ['path', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'line']:
+                    try:
+                        stroke_width_str = descendant.style.get('stroke-width', '')
+                        if stroke_width_str:
+                            # Parse value (e.g., "0.945mm" -> 0.945)
+                            measured_stroke = float(stroke_width_str.rstrip('mmpxtin '))
+                            break
+                    except (ValueError, AttributeError):
+                        continue
+
+            if measured_stroke is not None and measured_stroke > 0:
+                CORRECTION_FACTOR = TARGET_STROKE_MM / measured_stroke
+                inkex.utils.debug(f"Discovered correction factor: {CORRECTION_FACTOR:.4f} (measured: {measured_stroke:.3f}mm)")
+            else:
+                # Fallback to empirical value if measurement fails
+                CORRECTION_FACTOR = TARGET_STROKE_MM / 0.945
+                inkex.utils.debug(f"Using fallback correction factor: {CORRECTION_FACTOR:.4f}")
+        else:
+            # Fallback if no test element found
+            CORRECTION_FACTOR = TARGET_STROKE_MM / 0.945
+            inkex.utils.debug(f"No test element found, using fallback correction factor: {CORRECTION_FACTOR:.4f}")
+
+        # Apply strokes to holes in "top" area
+        for hole_num in range(1, 19):
+            hole_id = f"hole_{hole_num:02d}"
+            hole_group = self._find_hole_group(root, hole_id)
+
+            if hole_group is None:
+                continue
+
+            green_id = f"green_{hole_num:02d}"
+
+            for child in hole_group:
+                child_id = child.get('id')
+                should_set_stroke = False
+
+                if child_id == green_id:
+                    should_set_stroke = True
+
+                if isinstance(child, Group):
+                    label = child.get(inkex.addNS('label', 'inkscape'))
+                    if label and label.lower() in ('fairways', 'bunkers', 'other'):
+                        should_set_stroke = True
+                    # Also apply to yardage lines (label contains 'yardage')
+                    if label and 'yardage' in label.lower():
+                        should_set_stroke = True
+
+                if should_set_stroke:
+                    # Two-step process to work around Inkscape quirks:
+                    # Step 1: Apply compensation to normalize stroke behavior (produces ~0.945mm)
+                    cumulative_scale = get_cumulative_scale(child)
+                    if cumulative_scale <= 0:
+                        cumulative_scale = 1.0
+                    compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
+
+                    # Step 2: Apply correction factor to get from 0.945mm to 0.25mm
+                    final_stroke_mm = compensated_stroke_mm * CORRECTION_FACTOR
+                    set_stroke_recursive(child, final_stroke_mm)
+
+        # Apply strokes to greens in "bottom" area
+        if bottom_group is not None:
+            for child in bottom_group:
+                child_id = child.get('id')
+                # Target green_XX_bottom elements
+                if child_id and child_id.startswith('green_') and child_id.endswith('_bottom'):
+                    # Two-step process to work around Inkscape quirks:
+                    # Step 1: Apply compensation to normalize stroke behavior (produces ~0.945mm)
+                    cumulative_scale = get_cumulative_scale(child)
+                    if cumulative_scale <= 0:
+                        cumulative_scale = 1.0
+                    compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
+
+                    # Step 2: Apply correction factor to get from 0.945mm to 0.25mm
+                    final_stroke_mm = compensated_stroke_mm * CORRECTION_FACTOR
+                    set_stroke_recursive(child, final_stroke_mm)
 
         # Report results
         if len(processed_holes) > 0:
@@ -631,10 +711,6 @@ class AutoPlaceHoles(inkex.EffectExtension):
 
         translate_transform = Transform(translate=(translate_x, translate_y))
         green_copy.transform = translate_transform @ green_copy.transform
-
-        # Compensate stroke width for the cumulative scale
-        TARGET_STROKE_MM = 0.25
-        apply_stroke_compensation(green_copy, TARGET_STROKE_MM, self.svg)
 
 
 if __name__ == '__main__':

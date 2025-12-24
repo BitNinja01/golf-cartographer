@@ -166,97 +166,104 @@ def get_cumulative_scale(element: BaseElement) -> float:
 
 def set_stroke_recursive(
     element: BaseElement,
-    stroke_width: Union[str, float],
+    stroke_width_mm: Union[str, float],
+    use_vector_effect: bool = False,
 ) -> None:
     """
-    Set stroke-width on an element and all its descendants.
+    Set stroke properties on an element and all its descendants in millimeters.
 
-    This recursively walks the element tree and applies the stroke width
+    This recursively walks the element tree and applies stroke properties
     to all shape elements (path, rect, circle, ellipse, polygon, polyline, line).
+    The stroke width is always specified with 'mm' units for consistent print output.
+
+    By default, uses scale compensation (calculates inverse stroke width) rather than
+    vector-effect, as vector-effect doesn't work reliably with element transforms.
+
+    Sets stroke properties:
+    - stroke: #000000 (black)
+    - stroke-width: specified value with 'mm' units
+    - stroke-opacity: 1 (full opacity)
+    - vector-effect: non-scaling-stroke (optional, controlled by use_vector_effect)
 
     Args:
-        element: Element to set stroke width on
-        stroke_width: Stroke width value (string or float will be converted to string)
+        element: Element to set stroke properties on
+        stroke_width_mm: Stroke width in millimeters (will be converted to string with 'mm' suffix)
+        use_vector_effect: Whether to apply vector-effect: non-scaling-stroke (default False)
 
     Examples:
-        >>> # Set all descendants to 0.5px stroke
-        >>> set_stroke_recursive(my_group, "0.5")
+        >>> # Set compensated stroke (standard approach)
+        >>> compensated = 0.25 / get_cumulative_scale(element)
+        >>> set_stroke_recursive(element, compensated)
         >>>
-        >>> # Use with scale compensation
-        >>> scale = get_cumulative_scale(element)
-        >>> compensated = TARGET_STROKE_MM / scale
-        >>> set_stroke_recursive(element, str(compensated))
+        >>> # Set stroke with vector-effect (only for parent transforms)
+        >>> set_stroke_recursive(my_group, 0.25, use_vector_effect=True)
     """
-    stroke_width_str = str(stroke_width)
+    # Convert to float if string, then format with 'mm' units
+    if isinstance(stroke_width_mm, str):
+        # Remove any existing units for clean conversion
+        stroke_width_mm = stroke_width_mm.rstrip('mmpxtin ')
+        stroke_width_mm = float(stroke_width_mm)
+
+    stroke_width_str = f'{stroke_width_mm}mm'
     shape_tags = ['path', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'line']
     local_tag = element.tag.split('}')[-1] if '}' in element.tag else element.tag
 
     if local_tag in shape_tags:
         try:
             style = element.style
-            style['stroke-width'] = stroke_width_str
+            style['stroke'] = '#000000'                      # Black stroke
+            style['stroke-width'] = stroke_width_str         # Width in mm
+            style['stroke-opacity'] = '1'                    # Full opacity
+            if use_vector_effect:
+                style['vector-effect'] = 'non-scaling-stroke'    # Prevent scaling
             element.style = style
         except (AttributeError, TypeError, KeyError) as e:
             logger.debug(
-                "Could not set stroke-width for element %s: %s",
+                "Could not set stroke properties for element %s: %s",
                 element.get('id', 'unknown'),
                 e,
             )
 
     for child in element:
-        set_stroke_recursive(child, stroke_width_str)
+        set_stroke_recursive(child, stroke_width_mm, use_vector_effect)
 
 
 def apply_stroke_compensation(
     element: BaseElement,
     target_stroke_mm: float = TARGET_STROKE_MM,
     svg_context: Optional[inkex.SvgDocumentElement] = None,
+    use_vector_effect: bool = False,
 ) -> None:
     """
-    Apply stroke width compensation for scaled elements.
+    Apply stroke width to scaled elements in millimeters.
 
-    When elements are scaled, their stroke widths scale too, which causes
-    incorrect rendering in PDF export. This function compensates by setting
-    the stroke width to render at the target size regardless of scale.
-
-    Formula: compensated_stroke = target_stroke / cumulative_scale
+    By default, calculates cumulative scale and applies compensated stroke width
+    to achieve the target rendered stroke. This works reliably for all transform
+    scenarios (parent transforms and element transforms).
 
     Args:
-        element: Element to apply stroke compensation to
+        element: Element to apply stroke to
         target_stroke_mm: Target stroke width in millimeters (default 0.25mm)
-        svg_context: SVG document element for unit conversion (if None, uses element's root)
+        svg_context: SVG document element (unused, kept for API compatibility)
+        use_vector_effect: Whether to use vector-effect instead of compensation (default False)
 
     Examples:
-        >>> # Apply default 0.25mm stroke compensation
+        >>> # Apply compensated stroke (standard approach)
         >>> apply_stroke_compensation(scaled_element)
         >>>
-        >>> # Use custom stroke width
-        >>> apply_stroke_compensation(element, target_stroke_mm=0.5)
+        >>> # Apply with vector-effect (only for parent transforms)
+        >>> apply_stroke_compensation(element, use_vector_effect=True)
     """
-    cumulative_scale = get_cumulative_scale(element)
-    if cumulative_scale <= 0:
-        cumulative_scale = 1.0
-
-    # Get SVG context for unit conversion
-    if svg_context is None:
-        # Walk up to find root SVG element
-        current = element
-        while current is not None:
-            if isinstance(current, inkex.SvgDocumentElement):
-                svg_context = current
-                break
-            current = current.getparent()
-
-    if svg_context is None:
-        logger.warning("Could not find SVG context for unit conversion")
-        return
-
-    # Convert target stroke from mm to user units
-    target_stroke_uu = svg_context.unittouu(f'{target_stroke_mm}mm')
-    compensated_stroke = target_stroke_uu / cumulative_scale
-
-    # Apply to element and all descendants
-    set_stroke_recursive(element, str(compensated_stroke))
+    if use_vector_effect:
+        # Apply target stroke directly - vector-effect prevents scaling
+        set_stroke_recursive(element, target_stroke_mm, use_vector_effect=True)
+    else:
+        # Calculate compensated stroke for all transforms
+        cumulative_scale = get_cumulative_scale(element)
+        if cumulative_scale <= 0:
+            cumulative_scale = 1.0
+        compensated_mm = target_stroke_mm / cumulative_scale
+        set_stroke_recursive(element, compensated_mm, use_vector_effect=False)
 
 
 def measure_elements_via_temp_group(
