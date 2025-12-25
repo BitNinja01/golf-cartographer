@@ -45,6 +45,7 @@ from geometry_utils import (
     calculate_centroid,
     calculate_rotation_angle,
 )
+from dicts import BOUNDING_BOX_TOP, BOUNDING_BOX_BOTTOM
 
 if TYPE_CHECKING:
     from inkex import BaseElement
@@ -61,21 +62,11 @@ class AutoPlaceHoles(inkex.EffectExtension):
     Auto-Place Holes tool - combines Stages 3 & 4 of the pipeline.
     """
 
-    # Stage 3: Hardcoded bounding box for hole placement in "top" area (units in inches)
-    BOUNDING_BOX: Dict[str, float] = {
-        'x': 0.257,
-        'y': 0.247,
-        'width': 3.736,
-        'height': 6.756
-    }
+    # Stage 3: Bounding box for hole placement in "top" area (from dicts.py)
+    BOUNDING_BOX: Dict[str, float] = BOUNDING_BOX_TOP
 
-    # Stage 4: Target bounding box for scaled greens in "bottom" area (units in inches)
-    TARGET_BOX: Dict[str, float] = {
-        'x': 0.250,
-        'y': 7.000,
-        'width': 3.750,
-        'height': 3.750,
-    }
+    # Stage 4: Target bounding box for scaled greens in "bottom" area (from dicts.py)
+    TARGET_BOX: Dict[str, float] = BOUNDING_BOX_BOTTOM
 
     # Green positioning reference: top-left corner (in inches)
     GREEN_POSITION: Dict[str, float] = {

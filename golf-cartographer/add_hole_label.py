@@ -35,6 +35,7 @@ import inkex
 from inkex import Circle, Group, Rectangle, Style, TextElement, Transform, Tspan
 
 from glyph_library import GlyphLibrary
+from dicts import BOUNDING_BOX_TOP, TOP_RIGHT_X, TOP_RIGHT_Y, BOTTOM_RIGHT_X, BOTTOM_RIGHT_Y
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -68,17 +69,16 @@ class AddHoleLabel(inkex.EffectExtension):
     BOUNDING_BOX_MARGIN: float = 0.092  # inches - standard margin for circle badge and tee yardages
 
     # Fixed position for hole label circle (top-right area of page)
-    # Top area from auto_place_holes.py BOUNDING_BOX: x=0.257", y=0.247", w=3.736", h=6.756"
-    # Top-right corner: (0.257 + 3.736, 0.247) = (3.993", 0.247")
+    # Top area bounding box defined in dicts.py (BOUNDING_BOX_TOP)
     # Coordinates define the bounding box upper-left corner with margin applied
     # (Circle centers are calculated from this + radius offset)
     CIRCLE_DIAMETER: float = 0.506  # inches
-    CIRCLE_BBOX_UL_X: float = 3.993 - CIRCLE_DIAMETER - BOUNDING_BOX_MARGIN  # 3.395" inches
-    CIRCLE_BBOX_UL_Y: float = 0.247 + BOUNDING_BOX_MARGIN  # 0.339" inches
+    CIRCLE_BBOX_UL_X: float = TOP_RIGHT_X - CIRCLE_DIAMETER - BOUNDING_BOX_MARGIN
+    CIRCLE_BBOX_UL_Y: float = TOP_RIGHT_Y + BOUNDING_BOX_MARGIN
 
     # Calculate circle center from bounding box upper-left
-    CIRCLE_CENTER_X: float = CIRCLE_BBOX_UL_X + (CIRCLE_DIAMETER / 2)  # 3.648"
-    CIRCLE_CENTER_Y: float = CIRCLE_BBOX_UL_Y + (CIRCLE_DIAMETER / 2)  # 0.592"
+    CIRCLE_CENTER_X: float = CIRCLE_BBOX_UL_X + (CIRCLE_DIAMETER / 2)
+    CIRCLE_CENTER_Y: float = CIRCLE_BBOX_UL_Y + (CIRCLE_DIAMETER / 2)
 
     # Text positioning and sizing
     # Font sizes are user-configurable (font_size, par_font_size, tee_font_size)
@@ -95,11 +95,11 @@ class AddHoleLabel(inkex.EffectExtension):
     TEE_LETTER_SPACING_SCALE: float = 0.05  # Letter spacing as % of tee font size
 
     # Tee box yardage positioning (anchored to lower right of top area)
-    # Lower right corner: (0.257 + 3.736, 0.247 + 6.756) = (3.993", 7.003")
+    # Lower right corner defined in dicts.py (BOTTOM_RIGHT_X, BOTTOM_RIGHT_Y)
     # Three-element layout: name (right-aligned) : yardage (right-aligned to boundary)
     # TEE_YARDAGE_ANCHOR_X represents the RIGHT EDGE of the entire yardage group
-    TEE_YARDAGE_ANCHOR_X: float = 3.993 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from right edge = 3.901" (right boundary)
-    TEE_YARDAGE_ANCHOR_Y: float = 7.003 - BOUNDING_BOX_MARGIN  # inches - 0.092" padding from bottom = 6.911"
+    TEE_YARDAGE_ANCHOR_X: float = BOTTOM_RIGHT_X - BOUNDING_BOX_MARGIN
+    TEE_YARDAGE_ANCHOR_Y: float = BOTTOM_RIGHT_Y - BOUNDING_BOX_MARGIN
 
     def add_arguments(self, pars: argparse.ArgumentParser) -> None:
         """Add command-line arguments."""
@@ -187,23 +187,23 @@ class AddHoleLabel(inkex.EffectExtension):
         self._ensure_geo_child_order(geo_group, hole_num)
 
         # ===== STEP 2: Create BOTH rectangles (left 2/3 and right 1/3 of TOP area) =====
-        # TOP BOUNDING_BOX: x=0.257", y=0.247", w=3.736", h=6.756"
-        top_x = 0.257
-        top_y = 0.247
-        top_width = 3.736
-        top_height = 6.756
+        # TOP bounding box defined in dicts.py (BOUNDING_BOX_TOP)
+        top_x = BOUNDING_BOX_TOP['x']
+        top_y = BOUNDING_BOX_TOP['y']
+        top_width = BOUNDING_BOX_TOP['width']
+        top_height = BOUNDING_BOX_TOP['height']
 
         # LEFT 2/3 calculation (for clip-path):
-        left_two_thirds_x = top_x  # 0.257"
-        left_two_thirds_y = top_y  # 0.247"
-        left_two_thirds_width = top_width * 2.0 / 3.0  # 2.491"
-        left_two_thirds_height = top_height  # 6.756"
+        left_two_thirds_x = top_x
+        left_two_thirds_y = top_y
+        left_two_thirds_width = top_width * 2.0 / 3.0
+        left_two_thirds_height = top_height
 
         # RIGHT 1/3 calculation (for visual white mask):
-        right_third_x = top_x + left_two_thirds_width  # 2.748"
-        right_third_y = top_y  # 0.247"
-        right_third_width = top_width / 3.0  # 1.245"
-        right_third_height = top_height  # 6.756"
+        right_third_x = top_x + left_two_thirds_width
+        right_third_y = top_y
+        right_third_width = top_width / 3.0
+        right_third_height = top_height
 
         # Convert to user units (page coordinates)
         left_x_uu = self.svg.unittouu(f"{left_two_thirds_x}in")
@@ -375,6 +375,87 @@ class AddHoleLabel(inkex.EffectExtension):
                 yg.set('clip-path', f'url(#{clip_id})')
 
             logger.info(f"Applied clip-path to {len(yardage_groups)} yardage line group(s)")
+
+    def _generate_tee_mask(self, hole_num: int, geo_group: Group, tee_bounds: dict) -> None:
+        """
+        Generate white mask for tee yardages area, inserted into geo_XX.
+
+        Creates a white rectangle that covers the tee yardages bounding box (with padding)
+        to prevent terrain features from showing through the tee labels. The mask is
+        inserted at the same z-order position as the terrain mask (between 'other' and 'bunkers').
+
+        Args:
+            hole_num: Hole number for unique ID
+            geo_group: The geo_XX group to insert mask into
+            tee_bounds: Dict with 'left', 'right', 'top', 'bottom' in user units
+        """
+        # Add padding around tee bounds
+        PADDING_UU = self.svg.unittouu("0.05in")  # Small padding around text
+
+        mask_left = tee_bounds['left'] - PADDING_UU
+        mask_right = tee_bounds['right'] + PADDING_UU
+        mask_top = tee_bounds['top'] - PADDING_UU
+        mask_bottom = tee_bounds['bottom'] + PADDING_UU
+
+        mask_width = mask_right - mask_left
+        mask_height = mask_bottom - mask_top
+
+        # Remove existing tee mask if present
+        mask_id = f'tee_mask_{hole_num:02d}'
+        existing_mask = None
+        for child in list(geo_group):
+            if child.get('id') == mask_id:
+                existing_mask = child
+                break
+        if existing_mask is not None:
+            geo_group.remove(existing_mask)
+            logger.info(f"Removed existing tee mask for hole {hole_num}")
+
+        # Create white mask rectangle
+        mask = Rectangle()
+        mask.set('id', mask_id)
+        mask.set('x', str(mask_left))
+        mask.set('y', str(mask_top))
+        mask.set('width', str(mask_width))
+        mask.set('height', str(mask_height))
+        mask.style = Style({'fill': '#ffffff', 'stroke': 'none'})
+
+        # Apply inverse transform (same as terrain mask)
+        geo_transform = geo_group.transform or Transform()
+        if geo_transform:
+            inverse_transform = -geo_transform
+            mask.transform = inverse_transform
+
+        # Find insertion point: right after terrain_mask (or same position if not found)
+        terrain_mask_id = f'terrain_mask_{hole_num:02d}'
+        terrain_mask_index = None
+        for idx, child in enumerate(geo_group):
+            if child.get('id') == terrain_mask_id:
+                terrain_mask_index = idx
+                break
+
+        if terrain_mask_index is not None:
+            # Insert right after terrain mask
+            geo_group.insert(terrain_mask_index + 1, mask)
+            logger.info(f"Inserted tee mask for hole {hole_num} after terrain mask (index {terrain_mask_index + 1})")
+        else:
+            # Fallback: insert at same position as terrain mask would be (before bunkers)
+            bunkers_index = None
+            for idx, child in enumerate(geo_group):
+                if isinstance(child, Group):
+                    label = child.label
+                    if label and label.lower() == 'bunkers':
+                        bunkers_index = idx
+                        break
+
+            if bunkers_index is not None:
+                geo_group.insert(bunkers_index, mask)
+                logger.info(f"Inserted tee mask for hole {hole_num} before bunkers (index {bunkers_index})")
+            else:
+                geo_group.insert(0, mask)
+                logger.info(f"Inserted tee mask for hole {hole_num} at beginning")
+
+        logger.info(f"Successfully generated tee mask for hole {hole_num}: {mask_width:.2f}x{mask_height:.2f} uu")
 
     def _ensure_geo_child_order(self, geo_group: Group, hole_num: int) -> None:
         """
@@ -648,7 +729,7 @@ class AddHoleLabel(inkex.EffectExtension):
             return
 
         # Create tee yardages group
-        tee_yardages = self._create_tee_yardages(hole_num)
+        tee_yardages, tee_bounds = self._create_tee_yardages(hole_num)
 
         # Remove existing tee yardages if present
         if tee_yardages is not None:
@@ -745,6 +826,14 @@ class AddHoleLabel(inkex.EffectExtension):
             self._generate_terrain_mask(hole_num, wrapper_group, hole_group)
         except Exception as e:
             logger.warning(f"Could not generate terrain mask for hole {hole_num}: {e}")
+
+        # ==== Generate tee yardages mask (white box behind tee labels) ====
+        # This prevents terrain features from interfering with tee yardage text
+        if tee_bounds is not None:
+            try:
+                self._generate_tee_mask(hole_num, hole_group, tee_bounds)
+            except Exception as e:
+                logger.warning(f"Could not generate tee mask for hole {hole_num}: {e}")
 
     def _find_hole_group(self, root: inkex.SvgDocumentElement, hole_id: str) -> Optional[Group]:
         """
@@ -1006,7 +1095,7 @@ class AddHoleLabel(inkex.EffectExtension):
 
         return text_group, width, height
 
-    def _create_tee_yardages(self, hole_num: int) -> Optional[Group]:
+    def _create_tee_yardages(self, hole_num: int) -> tuple[Optional[Group], Optional[dict]]:
         """
         Create tee box yardage display with three-element formatting and bottom-up positioning.
 
@@ -1031,7 +1120,8 @@ class AddHoleLabel(inkex.EffectExtension):
             hole_num: Hole number (1-18) for unique group ID
 
         Returns:
-            Group containing tee yardage glyph groups, or None if no tees specified
+            Tuple of (Group, bounds_dict) where bounds_dict has 'left', 'right', 'top', 'bottom'
+            in user units, or (None, None) if no tees specified
         """
         # Collect tee boxes with non-zero yardages
         tees: list[tuple[str, int]] = []
@@ -1045,7 +1135,7 @@ class AddHoleLabel(inkex.EffectExtension):
         # Return None if no tees specified
         if not tees:
             logger.info("No tee box yardages specified (all zeros)")
-            return None
+            return None, None
 
         # Convert anchor positions to user units
         try:
@@ -1054,7 +1144,7 @@ class AddHoleLabel(inkex.EffectExtension):
 
         except (ValueError, AttributeError) as e:
             logger.error("Failed to convert tee yardage units: %s", e)
-            return None
+            return None, None
 
         # Use user's tee_font_size parameter directly
         tee_font_size = int(self.options.tee_font_size)
@@ -1099,6 +1189,13 @@ class AddHoleLabel(inkex.EffectExtension):
         created_elements: list[tuple[Group, Group, Group]] = []
         current_y_uu = base_y_uu
 
+        # Track bounding box (will be updated as we create elements)
+        min_x_uu = float('inf')  # Leftmost point (name positions)
+        max_x_uu = right_edge_uu  # Rightmost point (already known)
+        max_y_uu = base_y_uu  # Bottom edge (first element baseline)
+        min_y_uu = base_y_uu  # Top edge (will be updated)
+        max_glyph_height_uu = 0.0  # Track tallest glyph for top edge calculation
+
         # Process tees in reverse order (bottom to top)
         # This ensures Tee 1 appears at top, Tee 6 at bottom (conventional yardage book order)
         for idx, (name, yardage) in enumerate(reversed(tees)):
@@ -1116,15 +1213,20 @@ class AddHoleLabel(inkex.EffectExtension):
             this_yardage_x_uu = right_edge_uu - this_yardage_width_uu
 
             # Create the three elements for this line with measured positions
-            tee_name_elem, _, _ = self._create_tee_text_element(
+            tee_name_elem, _, name_height_uu = self._create_tee_text_element(
                 name, name_x_uu, current_y_uu
             )
             colon_elem, _, _ = self._create_tee_text_element(
                 ':', colon_x_uu, current_y_uu
             )
-            yardage_elem, _, _ = self._create_tee_text_element(
+            yardage_elem, _, yardage_height_uu = self._create_tee_text_element(
                 str(yardage), this_yardage_x_uu, current_y_uu
             )
+
+            # Update bounding box tracking
+            min_x_uu = min(min_x_uu, name_x_uu)  # Track leftmost name position
+            min_y_uu = current_y_uu  # This line's y (will be top after loop)
+            max_glyph_height_uu = max(max_glyph_height_uu, name_height_uu, yardage_height_uu)
 
             # Store elements for grouping
             created_elements.append((tee_name_elem, colon_elem, yardage_elem))
@@ -1148,11 +1250,23 @@ class AddHoleLabel(inkex.EffectExtension):
             tee_group.append(colon_elem)
             tee_group.append(yardage_elem)
 
+        # Calculate final bounding box (top edge accounts for glyph height above baseline)
+        bounds = {
+            'left': min_x_uu,
+            'right': max_x_uu,
+            'top': min_y_uu - max_glyph_height_uu,  # Glyph extends above baseline
+            'bottom': max_y_uu,
+        }
+
         logger.info(
             "Created tee yardage display with %d tees (bottom-up, glyph-based with accurate widths)",
             len(tees)
         )
-        return tee_group
+        logger.info(
+            "Tee yardages bounds: left=%.2f, right=%.2f, top=%.2f, bottom=%.2f",
+            bounds['left'], bounds['right'], bounds['top'], bounds['bottom']
+        )
+        return tee_group, bounds
 
     def show_available_fonts(self) -> None:
         """
