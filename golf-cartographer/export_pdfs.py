@@ -40,6 +40,11 @@ sys.path.insert(0, lib_path)
 from pypdf import PdfWriter, PdfReader
 
 
+class InkscapeExportError(RuntimeError):
+    """Raised when Inkscape CLI operations fail."""
+    pass
+
+
 class ExportPDFs(inkex.EffectExtension):
     """
     Exports complete yardage book as individual PDF pages and combines them
@@ -656,50 +661,83 @@ class ExportPDFs(inkex.EffectExtension):
         """
         Export document to PDF using Inkscape CLI.
 
-        Creates a temporary SVG file with the current document state
-        (including all visibility changes), passes it to Inkscape CLI for
-        PDF export, then cleans up the temp file.
+        Creates temporary SVG files with the current document state
+        (including all visibility changes), converts strokes to paths
+        to ensure consistent printing across different PDF printers,
+        then exports to PDF and cleans up temp files.
 
         Args:
             inkscape_path: Path to Inkscape CLI binary
             output_path: Output PDF file path
 
         Raises:
-            Exception: If Inkscape export fails
+            InkscapeExportError: If Inkscape export or stroke-to-path conversion fails
         """
-        # Create temporary SVG file with current visibility state
+        # Create temporary SVG files - close FDs immediately to prevent leaks
         # This preserves all visibility changes made by _configure_visibility()
-        temp_svg_fd, temp_svg_path = tempfile.mkstemp(suffix='.svg', prefix='yardage_book_')
+        temp_original_fd, temp_original_path = tempfile.mkstemp(suffix='.svg', prefix='yardage_book_original_')
+        os.close(temp_original_fd)  # Close immediately to prevent FD leak if second mkstemp fails
+
+        temp_converted_fd, temp_converted_path = tempfile.mkstemp(suffix='.svg', prefix='yardage_book_converted_')
+        os.close(temp_converted_fd)  # Close immediately to prevent FD leak
+
         try:
             # Write current document state to temp SVG file
             # The document includes all the visibility manipulations for this specific PDF
-            os.close(temp_svg_fd)  # Close file descriptor before writing to file
-            with open(temp_svg_path, 'wb') as f:
+            with open(temp_original_path, 'wb') as f:
                 self.document.write(f)
 
-            # Call Inkscape CLI to export PDF from the temp SVG
+            # Convert strokes to paths in a separate temp file
+            # This prevents PDF printers from applying transforms to strokes inconsistently
+            # The conversion bakes all transforms into path geometry
+            try:
+                convert_result = subprocess.run([
+                    inkscape_path,
+                    temp_original_path,
+                    '--actions=select-all:all;object-stroke-to-path',
+                    f'--export-filename={temp_converted_path}',
+                    '--export-plain-svg',
+                    '--export-text-to-path'
+                ], capture_output=True, text=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                raise InkscapeExportError(
+                    "Stroke-to-path conversion timed out after 30 seconds"
+                )
+
+            # Check if stroke-to-path conversion succeeded
+            if convert_result.returncode != 0:
+                error_msg = convert_result.stderr or convert_result.stdout or "Unknown error"
+                raise InkscapeExportError(f"Stroke-to-path conversion failed: {error_msg}")
+
+            # Call Inkscape CLI to export PDF from the converted SVG
             # Using high DPI (300) for print-quality output
-            result = subprocess.run([
-                inkscape_path,
-                temp_svg_path,
-                '--export-type=pdf',
-                f'--export-filename={output_path}',
-                '--export-dpi=300'           # Print quality resolution
-            ], capture_output=True, text=True, timeout=30)
+            try:
+                export_result = subprocess.run([
+                    inkscape_path,
+                    temp_converted_path,
+                    '--export-type=pdf',
+                    f'--export-filename={output_path}',
+                    '--export-dpi=300'           # Print quality resolution
+                ], capture_output=True, text=True, timeout=30)
+            except subprocess.TimeoutExpired:
+                raise InkscapeExportError(
+                    "PDF export timed out after 30 seconds"
+                )
 
             # Check if export succeeded
-            if result.returncode != 0:
-                error_msg = result.stderr if result.stderr else "Unknown error"
-                raise Exception(f"Inkscape export failed: {error_msg}")
+            if export_result.returncode != 0:
+                error_msg = export_result.stderr or export_result.stdout or "Unknown error"
+                raise InkscapeExportError(f"PDF export failed: {error_msg}")
 
         finally:
-            # Clean up temporary SVG file
+            # Clean up temporary SVG files
             # Use try-except to ensure cleanup happens even if it fails
-            try:
-                if os.path.exists(temp_svg_path):
-                    os.unlink(temp_svg_path)
-            except:
-                pass  # Silently ignore cleanup errors (temp file will be deleted by OS eventually)
+            for temp_path in [temp_original_path, temp_converted_path]:
+                try:
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                except OSError:
+                    pass  # Silently ignore cleanup errors (temp files will be deleted by OS eventually)
 
     def _combine_side_by_side(self, left_pdf_path, right_pdf_path, output_path):
         """

@@ -203,61 +203,6 @@ class AutoPlaceHoles(inkex.EffectExtension):
         # Using full scale compensation (no vector-effect) for all elements
         TARGET_STROKE_MM = 0.25
 
-        # Discover the correction factor by testing on a representative element
-        # This allows the factor to work for any course regardless of scale
-        CORRECTION_FACTOR = None
-        test_element = None
-
-        # Find a test element (first hole's fairway group)
-        for hole_num in range(1, 19):
-            hole_id = f"hole_{hole_num:02d}"
-            hole_group = self._find_hole_group(root, hole_id)
-            if hole_group is not None:
-                for child in hole_group:
-                    if isinstance(child, Group):
-                        label = child.get(inkex.addNS('label', 'inkscape'))
-                        if label and label.lower() == 'fairways':
-                            test_element = child
-                            break
-            if test_element is not None:
-                break
-
-        # Calculate correction factor from test element
-        if test_element is not None:
-            # Apply compensation to test element
-            cumulative_scale = get_cumulative_scale(test_element)
-            if cumulative_scale <= 0:
-                cumulative_scale = 1.0
-            compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
-            set_stroke_recursive(test_element, compensated_stroke_mm)
-
-            # Read back what stroke-width was actually set
-            # Find first shape element to read stroke from
-            measured_stroke = None
-            for descendant in test_element.iter():
-                local_tag = descendant.tag.split('}')[-1] if '}' in descendant.tag else descendant.tag
-                if local_tag in ['path', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'line']:
-                    try:
-                        stroke_width_str = descendant.style.get('stroke-width', '')
-                        if stroke_width_str:
-                            # Parse value (e.g., "0.945mm" -> 0.945)
-                            measured_stroke = float(stroke_width_str.rstrip('mmpxtin '))
-                            break
-                    except (ValueError, AttributeError):
-                        continue
-
-            if measured_stroke is not None and measured_stroke > 0:
-                CORRECTION_FACTOR = TARGET_STROKE_MM / measured_stroke
-                inkex.utils.debug(f"Discovered correction factor: {CORRECTION_FACTOR:.4f} (measured: {measured_stroke:.3f}mm)")
-            else:
-                # Fallback to empirical value if measurement fails
-                CORRECTION_FACTOR = TARGET_STROKE_MM / 0.945
-                inkex.utils.debug(f"Using fallback correction factor: {CORRECTION_FACTOR:.4f}")
-        else:
-            # Fallback if no test element found
-            CORRECTION_FACTOR = TARGET_STROKE_MM / 0.945
-            inkex.utils.debug(f"No test element found, using fallback correction factor: {CORRECTION_FACTOR:.4f}")
-
         # Apply strokes to holes in "top" area
         for hole_num in range(1, 19):
             hole_id = f"hole_{hole_num:02d}"
@@ -284,16 +229,12 @@ class AutoPlaceHoles(inkex.EffectExtension):
                         should_set_stroke = True
 
                 if should_set_stroke:
-                    # Two-step process to work around Inkscape quirks:
-                    # Step 1: Apply compensation to normalize stroke behavior (produces ~0.945mm)
+                    # Apply scale compensation to achieve target stroke width
                     cumulative_scale = get_cumulative_scale(child)
                     if cumulative_scale <= 0:
                         cumulative_scale = 1.0
                     compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
-
-                    # Step 2: Apply correction factor to get from 0.945mm to 0.25mm
-                    final_stroke_mm = compensated_stroke_mm * CORRECTION_FACTOR
-                    set_stroke_recursive(child, final_stroke_mm)
+                    set_stroke_recursive(child, compensated_stroke_mm)
 
         # Apply strokes to greens in "bottom" area
         if bottom_group is not None:
@@ -301,16 +242,12 @@ class AutoPlaceHoles(inkex.EffectExtension):
                 child_id = child.get('id')
                 # Target green_XX_bottom elements
                 if child_id and child_id.startswith('green_') and child_id.endswith('_bottom'):
-                    # Two-step process to work around Inkscape quirks:
-                    # Step 1: Apply compensation to normalize stroke behavior (produces ~0.945mm)
+                    # Apply scale compensation to achieve target stroke width
                     cumulative_scale = get_cumulative_scale(child)
                     if cumulative_scale <= 0:
                         cumulative_scale = 1.0
                     compensated_stroke_mm = TARGET_STROKE_MM / cumulative_scale
-
-                    # Step 2: Apply correction factor to get from 0.945mm to 0.25mm
-                    final_stroke_mm = compensated_stroke_mm * CORRECTION_FACTOR
-                    set_stroke_recursive(child, final_stroke_mm)
+                    set_stroke_recursive(child, compensated_stroke_mm)
 
         # Report results
         if len(processed_holes) > 0:

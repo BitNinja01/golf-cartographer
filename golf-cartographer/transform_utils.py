@@ -104,7 +104,7 @@ class SimpleBoundingBox:
         return (self.left, self.right, self.top, self.bottom)
 
 
-def get_cumulative_scale(element: BaseElement) -> float:
+def get_cumulative_scale(element: BaseElement, return_components: bool = False) -> float | tuple[float, float, float]:
     """
     Calculate the cumulative scale factor from an element's transform chain.
 
@@ -118,9 +118,10 @@ def get_cumulative_scale(element: BaseElement) -> float:
 
     Args:
         element: Element to calculate cumulative scale for
+        return_components: If True, return (scale_x, scale_y, average) instead of just average
 
     Returns:
-        Cumulative scale factor (1.0 if no scaling)
+        Cumulative scale factor (1.0 if no scaling), or tuple of (scale_x, scale_y, average) if return_components=True
 
     Examples:
         >>> scale = get_cumulative_scale(my_element)
@@ -128,6 +129,8 @@ def get_cumulative_scale(element: BaseElement) -> float:
         >>> compensated_stroke = target_stroke / scale
     """
     cumulative_scale = 1.0
+    cumulative_scale_x = 1.0
+    cumulative_scale_y = 1.0
     current: Optional[BaseElement] = element
 
     while current is not None:
@@ -152,6 +155,8 @@ def get_cumulative_scale(element: BaseElement) -> float:
                 scale_y = math.sqrt(c * c + d * d)
                 scale = (scale_x + scale_y) / 2.0
                 cumulative_scale *= scale
+                cumulative_scale_x *= scale_x
+                cumulative_scale_y *= scale_y
             except (IndexError, TypeError, ValueError) as e:
                 logger.debug(
                     "Could not extract scale from transform for element %s: %s",
@@ -161,6 +166,8 @@ def get_cumulative_scale(element: BaseElement) -> float:
 
         current = current.getparent()
 
+    if return_components:
+        return (cumulative_scale_x, cumulative_scale_y, cumulative_scale)
     return cumulative_scale
 
 
@@ -198,13 +205,17 @@ def set_stroke_recursive(
         >>> # Set stroke with vector-effect (only for parent transforms)
         >>> set_stroke_recursive(my_group, 0.25, use_vector_effect=True)
     """
-    # Convert to float if string, then format with 'mm' units
+    # Convert to float if string
     if isinstance(stroke_width_mm, str):
         # Remove any existing units for clean conversion
         stroke_width_mm = stroke_width_mm.rstrip('mmpxtin ')
         stroke_width_mm = float(stroke_width_mm)
 
-    stroke_width_str = f'{stroke_width_mm}mm'
+    # IMPORTANT: Store as unitless value (user units), NOT with 'mm' suffix
+    # When stroke-width has explicit units (e.g., "1.378mm"), Inkscape applies
+    # an incorrect conversion factor (~1.459x) when rendering transformed elements.
+    # Storing as unitless user units avoids this issue and renders correctly.
+    stroke_width_str = f'{stroke_width_mm}'
     shape_tags = ['path', 'rect', 'circle', 'ellipse', 'polygon', 'polyline', 'line']
     local_tag = element.tag.split('}')[-1] if '}' in element.tag else element.tag
 

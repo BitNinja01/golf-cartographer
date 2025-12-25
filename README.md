@@ -33,30 +33,25 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 
 ---
 
-# Requirements
-
+# What You Need
+### Digital Items
 - [**Inkscape 1.4.2 or later**](https://inkscape.org/) 
 	- Required - earlier versions have incompatible APIs
 - [**Python 3.7+**](https://www.python.org/downloads/)
 	- This is bundled with modern Inkscape, so you shouldn't need to install it
-- [**OpenStreetMap**](https://www.openstreetmap.org)
-	- Locate your golf course on the map
-	- On the right side of the page, find the "Share" tab
-	- Set the "Format" to SVG
-	- Set the "Scale" value as low as it will go
-	- Use "Set custom dimensions" and draw a square around your course
-	- Download the SVG
+- [**OpenStreetMap**](https://www.openstreetmap.org) SVG of your golf course
 - Your golf course's scorecard (with teebox yardages)
+### Physical Items
+- Legal sized paper (8.5" × 14") - I recommend 65lb cardstock
+- Chipboard - I usually use legal sized here too. I use 22pt, but a little thicker would be ok.
+- (Optional) Yardage book cover. Lots of places to get these, but [Etsy](https://www.etsy.com/) is a really good place to shop for one.
+### Tools
+- Craft knife
+- Sewing Needle
+- Thread
+- Awl
+- Something to label your finished book with
 
-**OSM website:**
-<p align="center">
-  <img src="docs/images/osm_example_01.png">
-</p>
-
-**SVG opened in Inkscape:**
-<p align="center">
-  <img src="docs/images/osm_example_02.png">
-</p>
 ---
 
 # Installation
@@ -76,6 +71,27 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 ---
 
 # Quick Start
+
+### Step 0: Download an SVG From Open Street Map
+
+- Go to [**OpenStreetMap**](https://www.openstreetmap.org)
+	- Locate your golf course on the map
+	- On the right side of the page, find the "Share" tab
+	- Set the "Format" to SVG
+	- Set the "Scale" value as low as it will go
+	- Use "Set custom dimensions" and draw a square around your course
+	- Download the SVG
+	- Open the SVG in Inkscape
+
+OSM:
+<p align="center">
+  <img src="docs/images/osm_example_01.png">
+</p>
+
+**SVG opened in Inkscape:**
+<p align="center">
+  <img src="docs/images/osm_example_02.png">
+</p>
 
 ### Step 1: Flatten SVG
 ```
