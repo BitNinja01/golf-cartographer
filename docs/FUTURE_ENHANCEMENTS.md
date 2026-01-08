@@ -4,67 +4,9 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-## High Priority - Workflow Improvements
-
-### 1. Batch Hole Grouping (Stage 2 Automation)
-
-**Problem**: Currently requires running "2. Group Hole" 18 times manually
-
-**Solution**: Create a single tool that prompts for all 18 holes in sequence
-- Present modal: "Select elements for Hole 1" → "Select elements for Hole 2" → etc.
-- Store selections between prompts
-- Create all 18 hole groups in one operation
-- Undo entire operation if user cancels mid-way
-
-**Technical approach**:
-- Use Inkscape's selection changed events
-- Maintain state between user selections
-- Similar to existing `group_hole.py` but with iteration logic
-
-**Impact**: Reduces Stage 2 from ~90-144 seconds to ~30-60 seconds (single operation)
-
----
-
-### 2. Auto-Detect Holes from Greens
-
-**Problem**: User must manually select which elements belong to each hole
-
-**Solution**: Automatically detect hole boundaries using green locations
-- Find all green elements (color detection already exists in `color_utils.py`)
-- For each green, find nearby fairways, bunkers, water within radius
-- Group elements by proximity to green centroid
-- Present preview for user to confirm/adjust
-
-**Technical approach**:
-- Use existing `calculate_centroid()` from `geometry_utils.py`
-- Implement spatial clustering (k-means or distance-based)
-- Add proximity threshold parameter (default: 200 yards in SVG units)
-
-**Impact**: Could eliminate manual selection entirely for well-structured OSM data
-
----
-
-### 3. Undo Support for All Stages
-
-**Problem**: No way to undo extension operations without manual Ctrl+Z spam
-
-**Solution**: Add "Undo Last Operation" tool
-- Store pre-operation SVG state
-- Restore on demand
-- Keep history for last N operations (default: 5)
-
-**Technical approach**:
-- Serialize document state before each extension runs
-- Store in temp directory: `/tmp/golf-cartographer-history/`
-- Create new tool: "0. Undo Last Golf Tool Operation"
-
-**Impact**: Safer experimentation, easier error recovery
-
----
-
 ## Medium Priority - Customization & Configuration
 
-### 4. Configuration File for Positioning
+### 1. Configuration File for Positioning
 
 **Problem**: Changing bounding boxes requires editing Python code
 
@@ -94,11 +36,13 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Fall back to hardcoded defaults if config missing
 - Validate config schema on load
 
+**Alternative approach**: Detect the 'guide' for the top and bottom pages that we need to fit stuff in. Use these to automatically figure out where stuff needs to go. This way, users could size the base template any way they want, and the code will still position holes and greens in expected places.
+
 **Impact**: Users can customize without editing code
 
 ---
 
-### 5. Interactive Parameter Dialog
+### 2. Interactive Parameter Dialog
 
 **Problem**: No UI for adjusting parameters without code edits
 
@@ -114,76 +58,12 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Access via `self.options.parameter_name` in Python
 - Add validation and helpful tooltips
 
-**Impact**: More accessible to non-developers
+**Impact**  : More accessible to non-developers
+**Consider**: This could bloat the UI. Should be done with great care. 
 
 ---
 
-### 6. Template Library System
-
-**Problem**: Single hardcoded yardage book layout
-
-**Solution**: Support multiple templates
-- Templates directory: `~/.config/golf-cartographer/templates/`
-- Each template defines: page size, hole positions, green positions, PDF export scheme
-- User selects template from dropdown in Stage 3
-
-**Templates to create**:
-- `default.json` - Current 4.25" x 11" booklet
-- `a5.json` - A5 paper size
-- `pocket.json` - Small 3" x 5" cards
-- `digital.json` - Optimized for tablet viewing
-
-**Technical approach**:
-- Template JSON schema with validation
-- Template selector parameter in Stage 3 `.inx`
-- Load template and override default constants
-
-**Impact**: Support different printing formats and devices
-
----
-
-## Medium Priority - Golf-Specific Features
-
-### 7. Yardage Line Generation
-
-**Problem**: Yardage lines must be added manually to OSM data
-
-**Solution**: Auto-generate yardage lines from centerline
-- User draws single centerline path from tee to green
-- Tool generates perpendicular yardage markers every 25 yards
-- Labels with distance to green
-- Color-coded by distance (e.g., red < 100yd, white 100-200yd, blue > 200yd)
-
-**Technical approach**:
-- Path interpolation using `inkex.paths` API
-- Calculate perpendicular vectors at intervals
-- Create line elements with text labels
-- Use existing transform utilities
-
-**Impact**: Eliminates most tedious manual work
-
----
-
-### 8. Hazard Distance Calculator
-
-**Problem**: No automatic distance measurements to hazards
-
-**Solution**: Click-to-measure tool for landing zones
-- User clicks on tee box → hazard → green
-- Tool calculates and displays distances
-- Optionally adds text labels to SVG
-
-**Technical approach**:
-- Interactive mode with click handlers
-- Use document units and scaling from `get_canvas_bounds()`
-- Real-world distance = SVG distance × scale factor
-- Convert to yards/meters based on preference
-
-**Impact**: Faster yardage book annotation
-
----
-
-### 9. Elevation Profile Support
+### 6. Elevation Profile Support
 
 **Problem**: No elevation data in yardage books
 
@@ -199,13 +79,13 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Scale to fit in designated area (e.g., bottom of page)
 - Add grid lines and labels
 
-**Impact**: Professional-quality yardage books with elevation
+**Impact**: Professional-quality green sections with elevation data
 
 ---
 
 ## Low Priority - Quality of Life
 
-### 10. Progress Indicators
+### 7. Progress Indicators
 
 **Problem**: No feedback during long operations (Stage 5 takes 2-5 minutes)
 
@@ -223,32 +103,14 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 11. Dry Run / Preview Mode
-
-**Problem**: Can't preview changes before applying
-
-**Solution**: Add "Preview" checkbox to each tool
-- Shows what would change without modifying document
-- Highlights affected elements
-- Displays summary: "Would create 18 hole groups, affecting 342 elements"
-
-**Technical approach**:
-- Run logic without committing changes
-- Use temporary layer for preview
-- Delete preview layer after user confirms
-
-**Impact**: Safer workflow, easier learning
-
----
-
-### 12. Validation & Pre-flight Checks
+### 9. Validation & Pre-flight Checks
 
 **Problem**: Extensions fail silently or with cryptic errors
 
 **Solution**: Add validation before each stage
 - Stage 1: Check document has content, valid units
 - Stage 2: Verify at least N elements selected
-- Stage 3: Confirm exactly 18 hole groups exist, template layer present
+- Stage 3: Template layer present
 - Stage 4: Verify hole groups exist for labeling
 - Stage 5: Verify all required layers/groups exist for export
 
@@ -263,7 +125,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ## Low Priority - Advanced Features
 
-### 13. Course Database Integration
+### 10. Course Database Integration
 
 **Problem**: No way to share/reuse course data
 
@@ -282,7 +144,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 14. Multi-Course Yardage Book
+### 11. Multi-Course Yardage Book
 
 **Problem**: Can only process one course per document
 
@@ -301,27 +163,9 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 15. Live GPS Integration (Future)
-
-**Problem**: Static yardage books don't update with pin positions
-
-**Solution**: Export to format compatible with GPS apps
-- Generate GeoJSON with hole polygons
-- Include green contours, hazards, yardage markers
-- Compatible with common golf GPS apps
-
-**Technical approach**:
-- Convert SVG coordinates to lat/lon using reference points
-- Export GeoJSON with feature properties
-- Document calibration process
-
-**Impact**: Bridge between paper and digital yardage books
-
----
-
 ## Technical Debt & Code Quality
 
-### 16. Unit Tests for Utility Modules
+### 13. Unit Tests for Utility Modules
 
 **Problem**: No automated testing
 
@@ -341,7 +185,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 17. Logging System
+### 14. Logging System
 
 **Problem**: Debugging requires print statements
 
@@ -357,47 +201,6 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - Add `--verbose` parameter to `.inx` files
 
 **Impact**: Easier debugging and issue reporting
-
----
-
-### 18. Continue Code Quality Improvements
-
-**Problem**: Ensure all tools maintain consistent code quality standards
-
-**Solution**: Apply consistent patterns across all tools
-- Add type hints with `from __future__ import annotations`
-- Replace silent exception handling with logging
-- Use specific exception types
-- Extract any shared utilities
-- Regular code reviews
-
-**Technical approach**:
-- Review all tool implementations periodically
-- Apply same refactoring patterns consistently
-- Consider extracting common logic to utility modules
-
-**Impact**: Consistent code quality and maintainability across all tools
-
----
-
-## Performance Optimizations
-
-### 19. Caching for Repeated Operations
-
-**Problem**: Recalculating centroids, bounding boxes for same elements
-
-**Solution**: Add caching layer
-- Cache centroid calculations by element ID
-- Cache bounding box measurements
-- Invalidate on transform changes
-- Use LRU cache with size limit
-
-**Technical approach**:
-- Add `@lru_cache` decorators to expensive functions
-- Create cache key from element ID + transform hash
-- Clear cache between extension runs
-
-**Impact**: Faster processing, especially for large courses
 
 ---
 
@@ -432,44 +235,3 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 - End-to-end: Complete workflow from OSM to print
 
 **Impact**: Easier onboarding for visual learners
-
----
-
-### 22. Troubleshooting Guide
-
-**Solution**: Comprehensive troubleshooting documentation
-- Common error messages with solutions
-- FAQ section
-- "My holes are positioned wrong" → step-by-step diagnosis
-- Color detection calibration guide
-
-**Impact**: Reduced support burden
-
----
-
-## Contributing
-
-Want to work on any of these enhancements?
-
-1. **Check GitHub issues** - Some may already be in progress
-2. **Comment on the issue** - Discuss approach before implementing
-3. **Start small** - Pick a "Low Priority - Quality of Life" item first
-4. **Follow patterns** - Match existing code quality standards
-5. **Test thoroughly** - Manual testing on real golf courses
-
-See [CLAUDE.md](../CLAUDE.md) for development setup and architecture details.
-
----
-
-## Priority Legend
-
-- **High Priority**: Biggest workflow improvements, relatively straightforward implementation
-- **Medium Priority**: Valuable features requiring more design work
-- **Low Priority**: Nice-to-have features, simpler implementations
-- **Advanced**: Complex features requiring significant architecture changes
-
----
-
-**Last Updated**: 2025-12-06
-
-**Total Enhancement Ideas**: 22
