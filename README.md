@@ -16,7 +16,7 @@
 
 ---
 
-**Easily create golf yardage books using OpenStreetMap data in Inkscape**
+### **Easily create golf yardage books using OpenStreetMap data in Inkscape**
 
 Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
 
