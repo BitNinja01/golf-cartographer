@@ -63,7 +63,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 6. Elevation Profile Support
+### 3. Elevation Profile Support
 
 **Problem**: No elevation data in yardage books
 
@@ -85,7 +85,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ## Low Priority - Quality of Life
 
-### 7. Progress Indicators
+### 4. Progress Indicators
 
 **Problem**: No feedback during long operations (Stage 5 takes 2-5 minutes)
 
@@ -103,7 +103,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 9. Validation & Pre-flight Checks
+### 5. Validation & Pre-flight Checks
 
 **Problem**: Extensions fail silently or with cryptic errors
 
@@ -125,7 +125,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ## Low Priority - Advanced Features
 
-### 10. Course Database Integration
+### 6. Course Database Integration
 
 **Problem**: No way to share/reuse course data
 
@@ -144,7 +144,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 11. Multi-Course Yardage Book
+### 7. Multi-Course Yardage Book
 
 **Problem**: Can only process one course per document
 
@@ -165,7 +165,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ## Technical Debt & Code Quality
 
-### 13. Unit Tests for Utility Modules
+### 8. Unit Tests for Utility Modules
 
 **Problem**: No automated testing
 
@@ -185,7 +185,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 14. Logging System
+### 9. Logging System
 
 **Problem**: Debugging requires print statements
 
@@ -204,7 +204,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ---
 
-### 20. Parallel PDF Export
+### 10. Parallel PDF Export
 
 **Problem**: Exporting 20 PDFs sequentially takes 2-5 minutes
 
@@ -224,7 +224,7 @@ Ideas and planned improvements for Golf Cartographer. These enhancements are org
 
 ## Documentation Improvements
 
-### 21. Video Tutorial Series
+### 11. Video Tutorial Series
 
 **Solution**: Create screencasts for each stage
 - Stage 1: Preparing OSM data and flattening
