@@ -12,6 +12,8 @@
 
 **Easily create golf yardage books using OpenStreetMap data in Inkscape**
 
+*DISCLAIMER* - While I am able to write Python, I used this project to learn more about Claude Code and AI-based workflows. All code in this repo was written with Claude Code, I simply guided it.
+
 Golf Cartographer (GC) was born from my desire to optimize the time I was spending creating yardage books manually in Inkscape. No more hours of manual layer organization, positioning, and PDF arrangements. GC takes a previously 15-20 hour long process, and automates it into a ~1.5 hour process.
 
 <!-- IMAGE OF FINAL YARDAGE BOOK -->
@@ -46,11 +48,13 @@ Result: A complete yardage book ready for saddle-stitch printing, all from a sin
 - Chipboard - I usually use legal sized here too. I use 22pt, but a little thicker would be ok.
 - (Optional) Yardage book cover. Lots of places to get these, but [Etsy](https://www.etsy.com/) is a really good place to shop for one.
 ### Tools
+- Binder clips
+- 15" or longer straight edge
 - Craft knife
 - Sewing Needle
 - Thread
 - Awl
-- Something to label your finished book with
+- Something to label the cover of your finished book
 
 ---
 
