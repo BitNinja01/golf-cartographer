@@ -1,0 +1,203 @@
+{
+  "Maplewood": {
+    "location": {
+      "city": "Renton",
+      "state/province": "Washington",
+      "country": "United States"
+    },
+    "tees": {
+      "blue": {
+        "yardage": "6102",
+        "rating": "69.7",
+        "slope": "123",
+        "front_rating": "34.6",
+        "front_slope": "117",
+        "back_rating": "35.1",
+        "back_slope": "129"
+      },
+      "white": {
+        "yardage": "5669",
+        "rating": "67.7",
+        "slope": "120",
+        "front_rating": "33.7",
+        "front_slope": "113",
+        "back_rating": "34.0",
+        "back_slope": "126"
+      },
+      "red": {
+        "yardage": "5088",
+        "rating": "65.5",
+        "slope": "112",
+        "front_rating": "32.5",
+        "front_slope": "105",
+        "back_rating": "33.0",
+        "back_slope": "118"
+      }
+    },
+    "par": "72",
+    "holes": {
+      "1": {
+        "par": "4",
+        "hole_index": 4,
+        "tees": {
+          "blue": 320,
+          "white": 286,
+          "red": 248
+        }
+      },
+      "2": {
+        "par": "3",
+        "hole_index": 12,
+        "tees": {
+          "blue": 163,
+          "white": 129,
+          "red": 99
+        }
+      },
+      "3": {
+        "par": "4",
+        "hole_index": 6,
+        "tees": {
+          "blue": 370,
+          "white": 351,
+          "red": 330
+        }
+      },
+      "4": {
+        "par": "4",
+        "hole_index": 8,
+        "tees": {
+          "blue": 330,
+          "white": 306,
+          "red": 271
+        }
+      },
+      "5": {
+        "par": "5",
+        "hole_index": 16,
+        "tees": {
+          "blue": 479,
+          "white": 458,
+          "red": 428
+        }
+      },
+      "6": {
+        "par": "3",
+        "hole_index": 18,
+        "tees": {
+          "blue": 139,
+          "white": 117,
+          "red": 94
+        }
+      },
+      "7": {
+        "par": "5",
+        "hole_index": 2,
+        "tees": {
+          "blue": 566,
+          "white": 529,
+          "red": 472
+        }
+      },
+      "8": {
+        "par": "4",
+        "hole_index": 10,
+        "tees": {
+          "blue": 302,
+          "white": 293,
+          "red": 273
+        }
+      },
+      "9": {
+        "par": "4",
+        "hole_index": 14,
+        "tees": {
+          "blue": 346,
+          "white": 316,
+          "red": 290
+        }
+      },
+      "10": {
+        "par": "5",
+        "hole_index": 3,
+        "tees": {
+          "blue": 514,
+          "white": 493,
+          "red": 438
+        }
+      },
+      "11": {
+        "par": "4",
+        "hole_index": 1,
+        "tees": {
+          "blue": 403,
+          "white": 383,
+          "red": 357
+        }
+      },
+      "12": {
+        "par": "3",
+        "hole_index": 9,
+        "tees": {
+          "blue": 177,
+          "white": 150,
+          "red": 130
+        }
+      },
+      "13": {
+        "par": "4",
+        "hole_index": 7,
+        "tees": {
+          "blue": 367,
+          "white": 344,
+          "red": 310
+        }
+      },
+      "14": {
+        "par": "3",
+        "hole_index": 17,
+        "tees": {
+          "blue": 145,
+          "white": 122,
+          "red": 106
+        }
+      },
+      "15": {
+        "par": "5",
+        "hole_index": 15,
+        "tees": {
+          "blue": 467,
+          "white": 436,
+          "red": 404
+        }
+      },
+      "16": {
+        "par": "4",
+        "hole_index": 11,
+        "tees": {
+          "blue": 365,
+          "white": 345,
+          "red": 324
+        }
+      },
+      "17": {
+        "par": "4",
+        "hole_index": 5,
+        "tees": {
+          "blue": 371,
+          "white": 361,
+          "red": 347
+        }
+      },
+      "18": {
+        "par": "4",
+        "hole_index": 13,
+        "tees": {
+          "blue": 300,
+          "white": 264,
+          "red": 226
+        }
+      }
+    }
+  }
+}

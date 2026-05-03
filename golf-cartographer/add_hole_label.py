@@ -145,6 +145,11 @@ class AddHoleLabel(inkex.EffectExtension):
                          help="Font weight (bold or normal)")
         pars.add_argument("--font_family", type=str, default="JetBrainsMono Nerd Font",
                          help="Glyph library font name (without .svg extension)")
+        # Batch from JSON options
+        pars.add_argument("--json_path", type=str, default="",
+                         help="Path to courses JSON file")
+        pars.add_argument("--course_name", type=str, default="",
+                         help="Course name (must match key in JSON exactly)")
 
     def _generate_terrain_mask(self, hole_num: int, wrapper_group: Group, geo_group: Group) -> None:
         """
@@ -619,52 +624,150 @@ class AddHoleLabel(inkex.EffectExtension):
 
     def effect(self) -> None:
         """
-        Main execution method for Add Hole Label Tool.
-
-        Execution Flow:
-        1. Check if we're on the "List Fonts" tab - if so, show available fonts and exit
-        2. Validate parameters (hole number, par, font size)
-        3. Load glyph library for accurate text measurements
-        4. Validate that hole group exists (from Stage 3)
-        5. Check for duplicate labels (remove if exists)
-        6. Create label group with circle and text elements
-        7. Add label group to hole group with inverse transform
-        8. Create and add tee yardages to hole group with inverse transform (if specified)
-
-        Validation ensures Stage 3 (Auto-Place Holes) has been run before
-        attempting to add labels.
+        Main execution method. Routes to the appropriate handler based on active tab:
+        - list_fonts: Show available glyph library fonts and exit.
+        - batch_json: Process all 18 holes from a courses JSON file.
+        - label (default): Process a single hole from UI parameters.
         """
-        # Check which tab is active
         if self.options.notebook == "list_fonts":
             self.show_available_fonts()
-            return  # Exit after showing fonts
+            return
 
-        root = self.document.getroot()
-        hole_num = self.options.hole_number
-        par = self.options.par
+        if self.options.notebook == "batch_json":
+            self._run_batch_from_json()
+            return
 
-        # Validate font family and fallback to JetBrains Mono Nerd Font if invalid
+        # Single-hole mode: load font once, then process
         import os
         font_name = self.validate_font_family(self.options.font_family.strip())
-
-        # Load glyph library for accurate text measurements
-        # Note: validate_font_family() already verified the file exists
         library_path = os.path.join(
             os.path.dirname(__file__),
             'glyph_libraries',
             f'{font_name}.svg'
         )
-
         try:
             self.glyph_library = GlyphLibrary(library_path)
             logger.info("Loaded glyph library from: %s", library_path)
         except Exception as e:
             logger.error("Failed to load glyph library: %s", e)
             inkex.errormsg(f"Error: Could not load glyph library: {e}")
-            inkex.errormsg("")
             inkex.errormsg(f"Font: {font_name}")
             inkex.errormsg(f"Path: {library_path}")
             return
+
+        self._process_single_hole()
+
+    def _run_batch_from_json(self) -> None:
+        """
+        Process all 18 holes from a courses.json file in a single execution.
+
+        Reads json_path and course_name from self.options. Loads the glyph library
+        once, then iterates holes 1-18, populating self.options from the JSON before
+        calling _process_single_hole() for each. Font settings (size, weight, family)
+        come from the Add Label tab values already in self.options.
+
+        Tee names (JSON keys) are title-cased. Unused tee slots are zeroed out each
+        iteration to prevent data bleeding between holes.
+        """
+        import json
+        import os
+
+        json_path = self.options.json_path.strip()
+        course_name = self.options.course_name.strip()
+
+        if not json_path:
+            inkex.errormsg("Error: JSON path is required for Batch from JSON mode.")
+            return
+        if not course_name:
+            inkex.errormsg("Error: Course name is required for Batch from JSON mode.")
+            return
+
+        json_path = os.path.expanduser(json_path)
+        if not os.path.isfile(json_path):
+            inkex.errormsg(f"Error: JSON file not found: {json_path}")
+            return
+
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            inkex.errormsg(f"Error: Failed to parse JSON file: {e}")
+            return
+        except OSError as e:
+            inkex.errormsg(f"Error: Could not read JSON file: {e}")
+            return
+
+        if course_name not in data:
+            available = ', '.join(sorted(data.keys()))
+            inkex.errormsg(f"Error: Course '{course_name}' not found in JSON.")
+            inkex.errormsg(f"Available courses: {available}")
+            return
+
+        holes_data = data[course_name].get("holes", {})
+        missing = [str(n) for n in range(1, 19) if str(n) not in holes_data]
+        if missing:
+            inkex.errormsg(
+                f"Error: Course '{course_name}' is missing hole data for: "
+                f"{', '.join(missing)}"
+            )
+            return
+
+        # Load glyph library once for all holes
+        font_name = self.validate_font_family(self.options.font_family.strip())
+        library_path = os.path.join(
+            os.path.dirname(__file__), 'glyph_libraries', f'{font_name}.svg'
+        )
+        try:
+            self.glyph_library = GlyphLibrary(library_path)
+            logger.info("Loaded glyph library from: %s", library_path)
+        except Exception as e:
+            inkex.errormsg(f"Error: Could not load glyph library: {e}")
+            return
+
+        # Lock tee ordering from hole 1's key insertion order (Python 3.7+ dicts are ordered)
+        tee_order = list(holes_data["1"].get("tees", {}).keys())
+
+        inkex.errormsg(
+            f"Batch from JSON: '{course_name}' — "
+            f"{len(tee_order)} tee(s): {', '.join(tee_order)}"
+        )
+
+        for hole_num in range(1, 19):
+            hole_data = holes_data[str(hole_num)]
+
+            self.options.hole_number = hole_num
+            self.options.par = int(hole_data["par"])
+
+            # Zero all six slots first to prevent stale data from previous hole
+            for slot in range(1, 7):
+                setattr(self.options, f'tee{slot}_name', '')
+                setattr(self.options, f'tee{slot}_yardage', 0)
+
+            # Populate from JSON (up to 6 tees, preserving JSON key order)
+            hole_tees = hole_data.get("tees", {})
+            for slot_idx, tee_key in enumerate(tee_order[:6], start=1):
+                setattr(self.options, f'tee{slot_idx}_name', tee_key.title())
+                setattr(self.options, f'tee{slot_idx}_yardage', int(hole_tees.get(tee_key, 0)))
+
+            logger.info("Batch: hole %d, par %d", hole_num, self.options.par)
+            self._process_single_hole()
+            inkex.errormsg(f"  Hole {hole_num} (par {self.options.par}) — done")
+
+        inkex.errormsg(f"Batch complete: all 18 holes labeled for '{course_name}'.")
+
+    def _process_single_hole(self) -> None:
+        """
+        Apply hole number, par, and tee yardage labels for one hole.
+
+        Reads hole_number, par, tee1-tee6 name/yardage, and font settings from
+        self.options. Assumes self.glyph_library is already loaded by the caller.
+
+        This is the extracted body of the original effect() method, shared by both
+        the single-hole (UI) and batch (JSON) execution paths.
+        """
+        root = self.document.getroot()
+        hole_num = self.options.hole_number
+        par = self.options.par
 
         # Parameter validation
         if not 1 <= hole_num <= 18:

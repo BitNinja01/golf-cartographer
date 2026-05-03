@@ -80,6 +80,26 @@ This will show all .svg files in the glyph_libraries folder.
 Use these exact names (without .svg) in the "Glyph Library Font" field.
             </param>
         </page>
+
+        <page name="batch_json" gui-text="Batch from JSON">
+            <param name="batch_json_info" type="description">Label all 18 holes in one click using course data from a JSON file.
+
+Font settings (size, weight, font name) are read from the Add Label tab — set those first, then switch here and click Apply.</param>
+
+            <param name="spacer_batch1" type="description">────────────────────────────────</param>
+
+            <!-- json_path: Full path to courses JSON file -->
+            <param name="json_path" type="string" gui-text="  JSON File Path:"></param>
+            <param name="json_path_hint" type="description">Full path to your courses.json file.
+Tilde (~) is supported (e.g. ~/Desktop/courses.json).</param>
+
+            <param name="spacer_batch2" type="description">────────────────────────────────</param>
+
+            <!-- course_name: Must match a top-level key in the JSON exactly -->
+            <param name="course_name" type="string" gui-text="  Course Name:"></param>
+            <param name="course_name_hint" type="description">Must match a top-level key in the JSON exactly.
+Example: Maplewood (case-sensitive)</param>
+        </page>
     </param>
 
     <!-- Effect Configuration -->
