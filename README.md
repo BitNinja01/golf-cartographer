@@ -10,6 +10,8 @@
   <img src="docs/images/logo_dark.svg#gh-dark-mode-only" alt="Golf Cartographer Logo" width="500">
 </p>
 
+!-- THIS PROJECT HAS BEEN REPLACED BY 'CARTOGRAPHER', A PLUGIN FOR PINSHEET. YOU CAN VIEW BOTH BELOW. THIS PROJECT WILL NO LONGER BE MAINTAINED --!
+
 ---
 
 ### *DISCLAIMER - I used this project to learn more about Claude Code and AI-based workflows. All code in this repo was generated with Claude Code, I simply acted as a guide.*
